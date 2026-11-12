@@ -12,10 +12,14 @@ const METRICAS = ['visualizacoes', 'retencao', 'continuaram', 'curtidas', 'inscr
 // O YouTube Studio em português mostra "12.000" e "74,5": o ponto de milhar sai e a vírgula vira ponto.
 // Porcentagem não tem milhar: nela, "74.125" é decimal.
 const PORCENTAGENS = ['retencao', 'continuaram']
+const MILHAR = { '.': /^\d{1,3}(\.\d{3})+$/, ',': /^\d{1,3}(,\d{3})+$/ }
 function lerNumero (valor, nome) {
   const texto = String(valor).trim().replace(/%$/, '').replace(/\s/g, '')
-  const milhar = !PORCENTAGENS.includes(nome) && /^\d{1,3}(\.\d{3})+$/.test(texto)
-  const normal = texto.includes(',') ? texto.replace(/\./g, '').replace(',', '.') : milhar ? texto.replace(/\./g, '') : texto
+  const contagem = !PORCENTAGENS.includes(nome)
+  // Contagem com vírgula a cada três dígitos é o Studio em inglês ("1,234"), e não decimal.
+  const normal = contagem && MILHAR[','].test(texto) ? texto.replace(/,/g, '')
+    : texto.includes(',') ? texto.replace(/\./g, '').replace(',', '.')
+      : contagem && MILHAR['.'].test(texto) ? texto.replace(/\./g, '') : texto
   const n = Number(normal)
   if (normal === '' || !Number.isFinite(n)) throw new Error(`--${nome} "${valor}" não é um número`)
   return n

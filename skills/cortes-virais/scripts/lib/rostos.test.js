@@ -181,3 +181,34 @@ test('planos deixa o pedaço de um quadro numa câmera própria com o rosto dela
   const plano = r.planos.find((p) => p.de <= 5.2 && p.ate > 5.2)
   assert.equal(plano.x < 960 ? 'esquerda' : 'direita', 'direita')
 })
+
+test('planos não mostra a tela desfocada no pedaço curto sem quadro de uma pessoa só', () => {
+  const quadros = Array.from({ length: 61 }, (_, k) => ({ t: Number((k * 0.2).toFixed(3)), faces: [rosto(0.7, k % 2 ? 0.4 : 0.1)] }))
+  const r = planos({ quadros, palavrasEditadas: falasDe(() => 'S1', 12), mantidos: [[0, 5.0], [5.25, 5.3], [5.31, 5.36], [5.61, 5.66], [6, 12]], info })
+  assert.deepEqual([...new Set(r.planos.map((p) => p.tipo))], ['rosto'])
+})
+
+test('planos com o layout rosto não troca de pessoa quando nenhum rosto fica a maior parte do corte', () => {
+  const quem = (t) => ((t % 20) < 5 || (t >= 10 && t < 20) ? 'S1' : 'S2')
+  const quadros = Array.from({ length: 150 }, (_, k) => {
+    const t = Number((k * 0.2).toFixed(1))
+    const mexe = k % 2 ? 0.6 : 0.1
+    if (t >= 10 && t < 20) return { t, faces: [rosto(0.5, mexe, 0.6)] }
+    return { t, faces: [rosto(0.3, quem(t) === 'S1' ? mexe : 0.05, 0.15), rosto(0.7, quem(t) === 'S2' ? mexe : 0.05, 0.15)] }
+  })
+  const r = planos({ quadros, palavrasEditadas: falasDe(quem, 30), mantidos: [[0, 30]], cortesDeCena: [10, 20], info, layout: 'rosto' })
+  assert.ok(r.planos.every((p) => p.x + p.w / 2 < 0.62 * 1920), JSON.stringify(r.planos.map((p) => [p.de, p.x])))
+})
+
+test('planos diz que segue quem fala quando a fonte troca de close entre duas pessoas', () => {
+  const close = (t) => (t >= 7 && t < 14 ? 'S2' : 'S1')
+  const quadros = Array.from({ length: 100 }, (_, k) => ({ t: Number((k * 0.2).toFixed(3)), faces: [rosto(0.5, k % 2 ? 0.5 : 0.1, close(k * 0.2) === 'S2' ? 0.4 : 0.3)] }))
+  const r = planos({ quadros, palavrasEditadas: falasDe(close), mantidos: [[0, 20]], cortesDeCena: [7, 14], info })
+  assert.equal(r.layout, 'falantes')
+})
+
+test('planos de uma pessoa só com pausas cortadas continua dizendo que segue o rosto', () => {
+  const quadros = Array.from({ length: 100 }, (_, k) => ({ t: Number((k * 0.2).toFixed(3)), faces: [rosto(0.5, k % 2 ? 0.5 : 0.1)] }))
+  const r = planos({ quadros, palavrasEditadas: falasDe(() => 'S1'), mantidos: [[0, 6], [7, 13], [14, 20]], info })
+  assert.equal(r.layout, 'rosto')
+})

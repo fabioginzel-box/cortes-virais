@@ -44,8 +44,9 @@ caminho absoluto da pasta desta skill.
 
 `node scripts/cortes.js fonte <pasta> <arquivo ou URL>`. Peça o **arquivo original da gravação** se
 ele existir: sai mais nítido que o download do YouTube, e em 4K o enquadramento pode dar zoom no rosto
-sem borrar. Com uma URL, o yt-dlp baixa na maior qualidade que houver. O comando diz a medida, a
-duração e se a fonte é pequena para o 9:16.
+sem borrar. Com uma URL, o yt-dlp baixa na maior qualidade que houver; se o download parar no meio (um
+vídeo longo em 4K passa do tempo de um comando), rode o mesmo comando de novo, que ele continua de onde
+parou. O comando diz a medida, a duração e se a fonte é pequena para o 9:16.
 
 ## 2. A transcrição
 

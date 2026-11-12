@@ -51,8 +51,8 @@ segundos.
 
 | Layout | Quando | Como fica |
 |---|---|---|
-| `rosto` | uma pessoa, ou pedido | o recorte fica num rosto só, o de quem mais fala no corte; se a pessoa anda, acompanha suave |
-| `falantes` (o `auto` com duas pessoas ou mais) | podcast, entrevista | mostra quem fala, com corte seco na troca; fala de menos de 1 s não troca o plano. Nos momentos em que os dois reagem (três falas curtas seguidas alternando, ou um riso de quase 1 s), a tela se divide só ali |
+| `rosto` | uma pessoa, ou pedido | o recorte fica num rosto só, o de quem mais fala no corte; se a pessoa anda, acompanha suave; numa câmera em que ele não aparece, fica no rosto do plano anterior |
+| `falantes` (o `auto` com duas pessoas ou mais) | podcast, entrevista, ou closes alternados das duas | mostra quem fala, com corte seco na troca; fala de menos de 1 s não troca o plano. Nos momentos em que os dois reagem (três falas curtas seguidas alternando, ou um riso de quase 1 s), a tela se divide só ali |
 | `dividido` | pedido | as duas pessoas empilhadas o corte inteiro, 1080×960 cada, a da esquerda em cima |
 | `tela` | sem rosto (gravação de tela, slide, produto), ou pedido | a imagem inteira na largura, sobre ela mesma desfocada e escurecida |
 

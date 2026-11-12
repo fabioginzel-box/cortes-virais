@@ -25,7 +25,7 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { spawn } = require('node:child_process')
 const { acharChrome } = require('./lib/chrome')
-const { acharPrograma, rodar, lerVersao, infoDoVideo, argsProbe, partes, argsAudio, argsCopiaLeve, argsQuadros, argsCortesDeCena, lerCortesDeCena, argsYtDlp } = require('./lib/midia')
+const { acharPrograma, rodar, lerVersao, infoDoVideo, fonteAtualizada, argsProbe, partes, argsAudio, argsCopiaLeve, argsQuadros, argsCortesDeCena, lerCortesDeCena, argsYtDlp, prepararDownload } = require('./lib/midia')
 const { normalizarScribe, frases, textoParaModelo, resumo: resumoDaTranscricao, formatarTempo } = require('./lib/transcricao')
 const { conferirCortes, contextoDoFim, palavrasEditadas, textoDoCorte, LIMITES } = require('./lib/plano')
 const { blocos, estados, trechosDasFrases, textoDaLegenda } = require('./lib/legendas')
@@ -35,7 +35,7 @@ const gemini = require('./lib/gemini')
 const { dataUrl } = require('./lib/replicate')
 const historico = require('./lib/historico')
 const { base, slug, nomeDaPasta, nomeDoVideo, hashDe } = require('./lib/pasta')
-const { gerar, identidade } = require('./lib/arquivo')
+const { gerar, identidade, identidadeDaFonte } = require('./lib/arquivo')
 const canais = require('./lib/canal')
 const marca = require('./lib/marca')
 
@@ -70,9 +70,24 @@ function exigir (arquivo, antes) {
 
 const lerOpcional = (arquivo, padrao) => (fs.existsSync(arquivo) ? lerJson(arquivo) : padrao)
 
-function lerVideo (pasta) {
+// A pasta montada por uma versão anterior ganha uma vez, no fonte.json, a medida de exibição e a
+// identidade do vídeo, enquanto ele está lá.
+function lerFonte (pasta) {
+  const arquivo = path.join(pasta, 'fonte.json')
+  const f = exigir(arquivo, 'node cortes.js fonte <pasta> <arquivo ou URL>')
+  const presente = fs.existsSync(f.arquivo)
+  let atual = fonteAtualizada(f, presente ? () => JSON.parse(rodar(programas().ffprobe, argsProbe(f.arquivo), { saida: true })) : null)
+  if (presente && !atual.identidade) atual = { ...atual, identidade: identidade(f.arquivo) }
+  if (atual !== f) gravarJson(arquivo, atual)
+  return atual
+}
+
+// Só quem recorta precisa do vídeo de origem: o conferir e o mesa funcionam com ele fora da pasta.
+function lerVideo (pasta, { comFonte = false } = {}) {
+  const fonte = lerFonte(pasta)
   return {
-    fonte: exigir(path.join(pasta, 'fonte.json'), 'node cortes.js fonte <pasta> <arquivo ou URL>'),
+    fonte,
+    idFonte: comFonte ? identidadeDaFonte(fonte) : null,
     palavras: exigir(path.join(pasta, 'palavras.json'), 'node cortes.js transcrever <pasta>').palavras,
     correcoes: lerOpcional(path.join(pasta, 'correcoes.json'), []),
     canal: canais.canalDoVideo(pasta)
@@ -249,6 +264,7 @@ function fonte (pasta, origem) {
     const ytdlp = acharPrograma('yt-dlp')
     if (!ytdlp) throw new Error(`para baixar do YouTube precisa do yt-dlp: ${INSTALAR.ytdlp}. Se tiver o arquivo original da gravação, use ele: sai melhor.`)
     arquivo = path.join(pasta, 'fonte.mp4')
+    prepararDownload(pasta, origem)
     console.log('baixando na maior qualidade que o vídeo tem (até 4K)…')
     rodar(ytdlp, argsYtDlp(origem, arquivo, { ffmpeg, node: process.execPath }))
     url = origem
@@ -258,7 +274,7 @@ function fonte (pasta, origem) {
   }
   const info = infoDoVideo(JSON.parse(rodar(ffprobe, argsProbe(arquivo), { saida: true })))
   if (!info.audio) throw new Error('o vídeo não tem áudio: sem fala não há transcrição nem corte')
-  gravarJson(path.join(pasta, 'fonte.json'), { arquivo, url, nome: nomeDoVideo(pasta), ...info })
+  gravarJson(path.join(pasta, 'fonte.json'), { arquivo, url, nome: nomeDoVideo(pasta), identidade: identidade(arquivo), ...info })
   console.log(`${path.basename(arquivo)}: ${info.largura}×${info.altura}, ${formatarTempo(info.duracao)}, ${info.fps} quadros/s${info.quadroVariavel ? ' (variável: a entrega sai a 30)' : ''}`)
   const ampliacao = render.ENTREGA.altura / info.altura
   if (ampliacao > 1.25) console.log(`aviso: o 9:16 vai ampliar o vídeo ${ampliacao.toFixed(1)} vezes (de ${info.altura} para ${render.ENTREGA.altura} linhas). Vale o --realce no render, ou o arquivo original em 4K.`)
@@ -376,14 +392,14 @@ function conferir (pasta, o) {
 
 const lerPlano = (pasta) => exigir(path.join(pasta, 'plano.json'), 'node cortes.js conferir <pasta>')
 
-// A identidade do arquivo da fonte entra em toda chave de cache: trocar o vídeo refaz tudo.
-const VERSAO_DO_ENQUADRAMENTO = 3
-const chaveDoEnquadramento = (c, idFonte) => hashDe([VERSAO_DO_ENQUADRAMENTO, idFonte, c.trechos, c.mantidos, c.layout || 'auto'])
+// A identidade do arquivo da fonte entra em toda chave de cache: trocar o vídeo refaz tudo. A medida da
+// fonte também: a pasta antiga que ganhou a largura de exibição refaz o enquadramento.
+const VERSAO_DO_ENQUADRAMENTO = 4
+const chaveDoEnquadramento = (c, idFonte, f) => hashDe([VERSAO_DO_ENQUADRAMENTO, idFonte, [f.largura, f.altura], c.trechos, c.mantidos, c.layout || 'auto'])
 const chaveDosRostos = (c, idFonte) => hashDe([idFonte, c.trechos.map((t) => [t.inicio, t.fim]), FPS_DOS_QUADROS])
 
 // Os rostos e as trocas de câmera só dependem dos trechos: mudar o layout ou a limpeza não os refaz.
-async function rostosDoCorte (pasta, c, f) {
-  const idFonte = identidade(f.arquivo)
+async function rostosDoCorte (pasta, c, f, idFonte) {
   const arquivo = path.join(pasta, 'rostos', `${c.id}.json`)
   const guardado = lerOpcional(arquivo, null)
   if (guardado && guardado.chave === chaveDosRostos(c, idFonte) && guardado.cortesDeCena) return guardado
@@ -411,7 +427,7 @@ async function rostosDoCorte (pasta, c, f) {
 }
 
 async function enquadrar (pasta, c, video) {
-  const { quadros, cortesDeCena } = await rostosDoCorte(pasta, c, video.fonte)
+  const { quadros, cortesDeCena } = await rostosDoCorte(pasta, c, video.fonte, video.idFonte)
   const enq = planos({
     quadros,
     cortesDeCena,
@@ -420,7 +436,7 @@ async function enquadrar (pasta, c, video) {
     info: video.fonte,
     layout: c.layout || 'auto'
   })
-  const doc = { chave: chaveDoEnquadramento(c, identidade(video.fonte.arquivo)), ...enq }
+  const doc = { chave: chaveDoEnquadramento(c, video.idFonte, video.fonte), ...enq }
   gravarJson(arquivoDoEnquadramento(pasta, c.id), doc)
   return doc
 }
@@ -428,11 +444,11 @@ async function enquadrar (pasta, c, video) {
 // O enquadramento guardado só vale para a mesma fonte, os mesmos trechos, a mesma limpeza e o mesmo layout.
 async function enquadramentoDe (pasta, c, video) {
   const guardado = lerOpcional(arquivoDoEnquadramento(pasta, c.id), null)
-  return guardado && guardado.chave === chaveDoEnquadramento(c, identidade(video.fonte.arquivo)) ? guardado : enquadrar(pasta, c, video)
+  return guardado && guardado.chave === chaveDoEnquadramento(c, video.idFonte, video.fonte) ? guardado : enquadrar(pasta, c, video)
 }
 
 async function rostos (pasta, o) {
-  const video = lerVideo(pasta)
+  const video = lerVideo(pasta, { comFonte: true })
   for (const c of escolher(lerPlano(pasta).cortes, listaDeIds(o.cortes))) {
     console.log(`corte ${c.id}: ${descrever(await enquadrar(pasta, c, video))}`)
   }
@@ -447,7 +463,7 @@ async function renderizar (pasta, c, video, { previa, realce, destino, comFinali
   const { prepararFinalizacao } = require('./lib/finalizacao')
   const m = exigirMarcaSemProblema(video.canal)
   const f = video.fonte
-  const idFonte = identidade(f.arquivo)
+  const idFonte = video.idFonte
   const enq = await enquadramentoDe(pasta, c, video)
   const fps = f.fpsDeEntrega
   const trabalho = path.join(pasta, 'trabalho', String(c.id))
@@ -457,7 +473,7 @@ async function renderizar (pasta, c, video, { previa, realce, destino, comFinali
   const impactos = trechosDasFrases(legenda, c.impacto).map((t) => ({ de: t.de - 0.05, ate: t.ate + 0.15 }))
 
   const trechos = c.trechos.map((t, k) => {
-    const a = render.argsTrecho(f.arquivo, t.inicio, t.fim, fps, path.join(trabalho, `t${k}-${hashDe([idFonte, t.inicio, t.fim, fps])}.mov`))
+    const a = render.argsTrecho(f.arquivo, t.inicio, t.fim, fps, path.join(trabalho, `t${k}-${hashDe([idFonte, t.inicio, t.fim, fps, render.PIXEL_QUADRADO])}.mov`))
     const arquivo = gerar(a.args[a.args.length - 1], (tmp) => rodar(ffmpeg, comoUltimo(a.args, tmp)))
     return { deslocamento: a.deslocamento, arquivo }
   })
@@ -492,7 +508,7 @@ async function renderizar (pasta, c, video, { previa, realce, destino, comFinali
   }
 
   const final = comFinalizacao
-    ? await prepararFinalizacao({ marca: m, trabalho, cache: path.join(pasta, 'trabalho'), fps, ffmpeg, ffprobe, fonte: f.arquivo, fim: c.trechos[c.trechos.length - 1].fim })
+    ? await prepararFinalizacao({ marca: m, trabalho, cache: path.join(pasta, 'trabalho'), fps, ffmpeg, ffprobe, fonte: f.arquivo, idFonte, fim: c.trechos[c.trechos.length - 1].fim })
     : null
   const medida = previa ? null : render.lerMedida(rodar(ffmpeg, render.argsMedirVolume(recorte)).stderr)
   fs.mkdirSync(path.dirname(destino), { recursive: true })
@@ -505,7 +521,7 @@ async function renderizar (pasta, c, video, { previa, realce, destino, comFinali
 }
 
 async function previa (pasta, o) {
-  const video = lerVideo(pasta)
+  const video = lerVideo(pasta, { comFonte: true })
   let erros = 0
   for (const c of escolher(lerPlano(pasta).cortes, listaDeIds(o.cortes))) {
     const destino = path.join(pasta, 'previas', `${c.id}.mp4`)
@@ -588,7 +604,7 @@ function aprovar (pasta, o) {
 }
 
 async function renderFinal (pasta, o) {
-  const video = lerVideo(pasta)
+  const video = lerVideo(pasta, { comFonte: true })
   const doc = exigir(path.join(pasta, 'aprovado.json'), 'node cortes.js aprovar <pasta>')
   const { ffmpeg } = programas()
   const conferencia = path.join(pasta, 'final', 'conferencia')

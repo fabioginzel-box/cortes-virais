@@ -109,3 +109,15 @@ test('resumo não traz o porquê de não medir quando o acerto existe', () => {
   const linhas = [60, 65, 70, 75, 80].map((n, i) => linha('a', 30, n, 40 + i * 5))
   assert.equal(resumo(linhas).semAcerto, null)
 })
+
+test('lerNumero lê a vírgula de milhar das visualizações do Studio em inglês', () => {
+  assert.equal(lerNumero('1,234', 'visualizacoes'), 1234)
+})
+
+test('lerNumero lê a vírgula de milhar com mais de um grupo', () => {
+  assert.equal(lerNumero('1,234,567', 'visualizacoes'), 1234567)
+})
+
+test('lerNumero continua lendo a vírgula decimal da retenção', () => {
+  assert.equal(lerNumero('74,125', 'retencao'), 74.125)
+})

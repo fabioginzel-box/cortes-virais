@@ -111,3 +111,10 @@ test('hostLocal aceita o localhost', () => {
 test('hostLocal recusa outro domínio', () => {
   assert.equal(hostLocal('evil.example:53327'), false)
 })
+
+test('a mesa local guarda e devolve a versão do documento', async () => {
+  await comMesa(async (mesa) => {
+    await fetch(`${mesa.url}api/cortes/1`, { method: 'PUT', body: JSON.stringify({ aprovado: true, v: 3 }) })
+    assert.deepEqual(await (await fetch(`${mesa.url}api/cortes`)).json(), [{ id: '1', data: { aprovado: true, v: 3 } }])
+  })
+})

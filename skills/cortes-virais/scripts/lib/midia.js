@@ -80,8 +80,17 @@ function infoDoVideo (probe) {
     fpsDeEntrega: variavel ? 30 : fpsDeEntrega(media || real),
     quadroVariavel: variavel,
     audio: Boolean(a),
-    codec: v.codec_name
+    codec: v.codec_name,
+    sar: sar > 0 ? Number(sar.toFixed(3)) : 1
   }
+}
+
+// O fonte.json de antes do pixel quadrado não tem o `sar` e guarda a largura codificada: com o vídeo na
+// pasta, a medida se lê de novo. `lerProbe` é null quando o vídeo não está lá.
+function fonteAtualizada (fonte, lerProbe) {
+  if (fonte.sar != null || !lerProbe) return fonte
+  const { largura, altura, sar } = infoDoVideo(lerProbe())
+  return { ...fonte, largura, altura, sar }
 }
 
 function argsProbe (arquivo) {
@@ -132,11 +141,22 @@ function lerCortesDeCena (stderr, inicio, fim) {
 // Sem achar o ffmpeg, o yt-dlp não junta vídeo e áudio e cai calado no arquivo único, de baixa
 // resolução; e o YouTube exige um runtime de JavaScript, que pode ser o próprio Node da skill.
 function argsYtDlp (url, destino, { ffmpeg = null, node = null } = {}) {
-  return ['-f', 'bv*[height<=2160]+ba/b', '--merge-output-format', 'mp4', '--no-playlist', '--force-overwrites', '--retries', '10',
+  return ['-f', 'bv*[height<=2160]+ba/b', '--merge-output-format', 'mp4', '--no-playlist', '--retries', '10',
     '--fragment-retries', '10',
     ...(ffmpeg ? ['--ffmpeg-location', ffmpeg] : []),
     ...(node ? ['--js-runtimes', `node:${node}`] : []),
     '-o', destino, url]
 }
 
-module.exports = { acharPrograma, rodar, lerVersao, infoDoVideo, fpsDeEntrega, argsProbe, partes, argsAudio, argsCopiaLeve, argsQuadros, argsCortesDeCena, lerCortesDeCena, argsYtDlp }
+// O yt-dlp continua um download interrompido (o .part) e não baixa de novo o que já tem; o
+// --force-overwrites desligaria isso. O vídeo de outro link sai antes, e o link fica anotado antes de baixar.
+function prepararDownload (pasta, url) {
+  const anotado = path.join(pasta, '.fonte-url')
+  const anterior = fs.existsSync(anotado) ? fs.readFileSync(anotado, 'utf8').trim() : null
+  if (anterior !== url) {
+    for (const a of fs.readdirSync(pasta)) if (a.startsWith('fonte.mp4') || /^fonte\.f\d+\./.test(a)) fs.rmSync(path.join(pasta, a), { force: true })
+  }
+  fs.writeFileSync(anotado, url)
+}
+
+module.exports = { acharPrograma, rodar, lerVersao, infoDoVideo, fonteAtualizada, fpsDeEntrega, argsProbe, partes, argsAudio, argsCopiaLeve, argsQuadros, argsCortesDeCena, lerCortesDeCena, argsYtDlp, prepararDownload }

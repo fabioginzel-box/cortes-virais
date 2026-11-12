@@ -119,7 +119,9 @@ Se a pasta Documentos sincroniza com a nuvem (iCloud, OneDrive), os gigabytes de
 aponte `CORTES_VIRAIS_DIR` para fora dela. O `ambiente` mostra o caminho.
 
 A pasta `trabalho/` de cada vídeo guarda os intermediários (um minuto de corte pode passar de 500 MB
-em CRF 12). Pode apagar depois da entrega.
+em CRF 12). Pode apagar depois da entrega. Com o vídeo de origem fora do lugar (disco cheio, HD
+desmontado), o `conferir` e a `mesa` funcionam, e a `previa` e o `render` saem do que já está pronto
+em `trabalho/`.
 
 ## A mesa de aprovação
 

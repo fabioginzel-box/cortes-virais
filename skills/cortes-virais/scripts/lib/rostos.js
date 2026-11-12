@@ -165,11 +165,15 @@ function rostoDoPedaco (quadros) {
   return [...fortes].sort((a, b) => b.h - a.h)[0]
 }
 
-// Com o layout "rosto", o corte fica num rosto só: o de boca mais ativa no corte inteiro, procurado em
-// cada pedaço pela posição; sumindo dali (outra câmera), vale o rosto do pedaço.
-function rostoFixo (quadros, principal) {
-  const perto = presentes(quadros).map((tr) => ({ tr, d: Math.abs(tr.cx - principal.cx) })).sort((a, b) => a.d - b.d)[0]
-  return perto && perto.d < 0.15 ? perto.tr : rostoDoPedaco(quadros)
+// Com o layout "rosto", o corte fica num rosto só: o de boca mais ativa no corte inteiro e, sem ele por
+// perto (outra câmera), o do pedaço anterior, procurados pela posição; sem nenhum dos dois, o do pedaço.
+function rostoFixo (quadros, alvos) {
+  const fortes = presentes(quadros)
+  for (const alvo of alvos.filter(Boolean)) {
+    const perto = fortes.map((tr) => ({ tr, d: Math.abs(tr.cx - alvo.cx) })).sort((a, b) => a.d - b.d)[0]
+    if (perto && perto.d < 0.15) return perto.tr
+  }
+  return rostoDoPedaco(quadros)
 }
 
 // O pedaço curto que caiu entre dois quadros analisados fica com o plano do vizinho mais perto, o de
@@ -198,7 +202,9 @@ function planos ({ quadros, palavrasEditadas, mantidos, info, layout = 'auto', c
   const trocasDeCamera = cortesEditados.length
   if (layout === 'tela') return { layout: 'tela', trocasDeCamera, planos: [{ de: 0, ate: duracao, tipo: 'tela' }] }
   const editados = quadrosEditados(quadros, lt)
-  const principal = layout === 'rosto' ? rostoDoPedaco(editados) : null
+  const fixo = layout === 'rosto'
+  const principal = fixo ? rostoDoPedaco(editados) : null
+  let anterior = null
   const tomadas = fronteiras(lt, cortesDeCena, [])
   const marcos = fronteiras(lt, cortesDeCena, turnos(palavrasEditadas, duracao).map((t) => t.de))
 
@@ -210,7 +216,8 @@ function planos ({ quadros, palavrasEditadas, mantidos, info, layout = 'auto', c
     const tomada = tomadas.filter((m) => m <= de).length - 1
     const camera = cortesEditados.filter((m) => m <= de).length
     if (!doPedaco.length) { pedacos.push({ de, ate, tomada, camera, herda: true }); continue }
-    const tr = principal ? rostoFixo(doPedaco, principal) : rostoDoPedaco(doPedaco)
+    const tr = fixo ? rostoFixo(doPedaco, [principal, anterior]) : rostoDoPedaco(doPedaco)
+    if (tr) anterior = tr
     const proprio = tr ? { tipo: 'rosto', pontos: tr.pontos, cx: tr.cx, h: tr.h } : { tipo: 'tela' }
     // Com um quadro só não se mede a boca: vale o vizinho da mesma câmera, e só sem ele o rosto do quadro.
     pedacos.push(doPedaco.length < 2 ? { de, ate, tomada, camera, herda: true, proprio } : { de, ate, tomada, camera, ...proprio })
@@ -261,8 +268,11 @@ function planos ({ quadros, palavrasEditadas, mantidos, info, layout = 'auto', c
     return { ...intervalo, tipo: 'rosto', ...recorte, ...(xs ? { xs } : {}) }
   })
   const rostos = new Set(saida.filter((p) => p.tipo === 'rosto').map((p) => Math.round((p.x + p.w / 2) / (0.15 * info.largura))))
-  // Emenda de pausa cortada não é troca de pessoa: só rostos em lugares diferentes fazem o "falantes".
-  const tipo = saida.every((p) => p.tipo === 'tela') ? 'tela' : saida.every((p) => p.tipo === 'dividido') ? 'dividido' : layout !== 'rosto' && rostos.size > 1 ? 'falantes' : 'rosto'
+  // Emenda de pausa cortada não é troca de pessoa: "falantes" pede rostos em lugares diferentes, ou mais de
+  // uma voz com troca de plano (closes de duas pessoas no mesmo lugar do quadro).
+  const vozes = new Set(palavrasEditadas.filter((p) => !p.ev && p.f).map((p) => p.f)).size
+  const variosRostos = rostos.size > 1 || (vozes > 1 && saida.length > 1)
+  const tipo = saida.every((p) => p.tipo === 'tela') ? 'tela' : saida.every((p) => p.tipo === 'dividido') ? 'dividido' : layout !== 'rosto' && variosRostos ? 'falantes' : 'rosto'
   return { layout: tipo, trocasDeCamera, planos: saida }
 }
 

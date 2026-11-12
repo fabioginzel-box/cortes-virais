@@ -112,8 +112,9 @@ function chave (texto) {
 }
 
 // Corrige a grafia antes da legenda: cada { de, para } troca a sequência de palavras de `de` por uma
-// palavra só, do começo da primeira ao fim da última, com a pontuação final da última.
-function aplicarCorrecoes (palavras, correcoes = []) {
+// palavra só, do começo da primeira ao fim da última, com a pontuação final da última. `juntam(a, b)` diz
+// se duas palavras seguidas da lista podem virar uma (na fonte, elas se seguem).
+function aplicarCorrecoes (palavras, correcoes = [], { juntam = () => true } = {}) {
   let lista = palavras
   for (const c of correcoes) {
     const alvo = String(c.de || '').split(/\s+/).map(chave).filter(Boolean)
@@ -121,7 +122,7 @@ function aplicarCorrecoes (palavras, correcoes = []) {
     const saida = []
     for (let i = 0; i < lista.length; i++) {
       const seq = lista.slice(i, i + alvo.length)
-      const casa = seq.length === alvo.length && seq.every((p, k) => !p.ev && chave(p.t) === alvo[k])
+      const casa = seq.length === alvo.length && seq.every((p, k) => !p.ev && chave(p.t) === alvo[k] && (k === 0 || juntam(seq[k - 1], p)))
       if (!casa) { saida.push(lista[i]); continue }
       const ultima = seq[seq.length - 1]
       const pontuacao = (/[^\p{L}\p{N}]+$/u.exec(ultima.t) || [''])[0]

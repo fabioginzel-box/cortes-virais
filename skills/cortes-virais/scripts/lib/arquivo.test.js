@@ -5,7 +5,8 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { gerar, temporario, identidade, renomear } = require('./arquivo')
+const arquivo = require('./arquivo')
+const { gerar, temporario, identidade, renomear } = arquivo
 
 const pasta = () => fs.mkdtempSync(path.join(os.tmpdir(), 'arquivo-'))
 
@@ -65,4 +66,19 @@ test('renomear não insiste em erro que não é de arquivo ocupado', () => {
   let vezes = 0
   assert.throws(() => renomear('a', 'b', { pausa: 1, mover: () => { vezes++; const e = new Error('sumiu'); e.code = 'ENOENT'; throw e } }), /sumiu/)
   assert.equal(vezes, 1)
+})
+
+test('identidadeDaFonte usa a do fonte.json quando o vídeo saiu da pasta', () => {
+  const f = { arquivo: path.join(pasta(), 'sumiu.mp4'), identidade: ['/x/fonte.mp4', 10, 20] }
+  assert.deepEqual(arquivo.identidadeDaFonte(f), ['/x/fonte.mp4', 10, 20])
+})
+
+test('identidadeDaFonte lê o vídeo quando ele está na pasta', () => {
+  const a = path.join(pasta(), 'f.mp4')
+  fs.writeFileSync(a, 'x')
+  assert.deepEqual(arquivo.identidadeDaFonte({ arquivo: a, identidade: ['velha', 1, 1] }), identidade(a))
+})
+
+test('identidadeDaFonte diz onde a fonte devia estar quando não há nenhuma', () => {
+  assert.throws(() => arquivo.identidadeDaFonte({ arquivo: path.join(pasta(), 'sumiu.mp4') }), /sumiu\.mp4/)
 })

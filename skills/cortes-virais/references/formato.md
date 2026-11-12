@@ -5,7 +5,7 @@ Tudo de um vídeo fica na pasta que o `pasta` criou, em
 
 | Arquivo | Quem grava | O que é |
 |---|---|---|
-| `fonte.json` | `fonte` | caminho do vídeo, URL de origem, medida, duração e quadros por segundo |
+| `fonte.json` | `fonte` | caminho do vídeo, URL de origem, identidade do arquivo (caminho, tamanho e data), medida de exibição, duração e quadros por segundo |
 | `audio.m4a` | `transcrever` | o áudio que sobe para a transcrição |
 | `transcricao-bruta.json` | `transcrever` | a saída do Scribe v2, como veio |
 | `palavras.json` | `transcrever` | cada palavra com início, fim e falante (`S1`, `S2`…), e os sons (`ev: true`) |
@@ -55,7 +55,8 @@ Tudo de um vídeo fica na pasta que o `pasta` criou, em
   `conferir` dá `PROBLEMA` para o id repetido.
 - `trechos` vão na ordem em que tocam. Os tempos podem ser `h:mm:ss.d` (como no `falas.txt`) ou
   segundos. Não precisam cair na palavra exata: o `conferir` ajusta. No exemplo, o primeiro trecho é a
-  abertura no ponto alto, e o segundo é a história desde o começo.
+  abertura no ponto alto, e o segundo é a história desde o começo. Trechos pedidos em sequência que o
+  ajuste das bordas faz se encontrar viram um só, e o `conferir` avisa.
 - `destaques` (opcional) são palavras ou frases ditas no corte que a legenda pinta na cor de destaque
   do canal; `impacto`
   (opcional) são frases ditas no corte que ganham um zoom seco de 12% enquanto são faladas. As duas

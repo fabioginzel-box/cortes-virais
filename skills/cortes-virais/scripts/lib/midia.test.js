@@ -2,7 +2,11 @@
 
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { infoDoVideo, fpsDeEntrega, partes, argsQuadros, lerVersao, lerCortesDeCena, acharPrograma, argsYtDlp } = require('./midia')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
+const midia = require('./midia')
+const { infoDoVideo, fpsDeEntrega, partes, argsQuadros, lerVersao, lerCortesDeCena, acharPrograma, argsYtDlp } = midia
 
 const probe = (v, extra = {}) => ({ streams: [{ codec_type: 'video', codec_name: 'h264', width: 1920, height: 1080, r_frame_rate: '30000/1001', avg_frame_rate: '30000/1001', ...v }, { codec_type: 'audio' }], format: { duration: '600.5' }, ...extra })
 
@@ -100,8 +104,8 @@ test('argsYtDlp sem programas achados não passa as opções', () => {
   assert.ok(!a.includes('--ffmpeg-location') && !a.includes('--js-runtimes'))
 })
 
-test('argsYtDlp sobrescreve o download de outro vídeo na mesma pasta', () => {
-  assert.ok(argsYtDlp('https://youtu.be/x', '/p/fonte.mp4').includes('--force-overwrites'))
+test('argsYtDlp continua o download interrompido, sem o --force-overwrites que liga o --no-continue', () => {
+  assert.ok(!argsYtDlp('https://youtu.be/x', '/p/fonte.mp4').includes('--force-overwrites'))
 })
 
 test('infoDoVideo usa a largura de exibição do pixel não quadrado', () => {
@@ -115,4 +119,49 @@ test('infoDoVideo ignora o SAR indefinido', () => {
 
 test('infoDoVideo arredonda a largura de exibição como o filtro do trecho', () => {
   assert.equal(infoDoVideo(probe({ width: 720, height: 480, sample_aspect_ratio: '32:27' })).largura, 852)
+})
+
+const pastaComDownload = (url) => {
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'fonte-'))
+  fs.writeFileSync(path.join(pasta, 'fonte.mp4.part'), 'meio')
+  fs.writeFileSync(path.join(pasta, 'fonte.mp4'), 'velho')
+  if (url) fs.writeFileSync(path.join(pasta, '.fonte-url'), url)
+  return pasta
+}
+
+test('prepararDownload apaga o vídeo baixado de outro link', () => {
+  const pasta = pastaComDownload('https://youtu.be/a')
+  midia.prepararDownload(pasta, 'https://youtu.be/b')
+  assert.deepEqual(fs.readdirSync(pasta).filter((a) => a.startsWith('fonte')), [])
+})
+
+test('prepararDownload mantém o download pela metade do mesmo link', () => {
+  const pasta = pastaComDownload('https://youtu.be/a')
+  midia.prepararDownload(pasta, 'https://youtu.be/a')
+  assert.equal(fs.existsSync(path.join(pasta, 'fonte.mp4.part')), true)
+})
+
+test('prepararDownload anota o link antes de baixar', () => {
+  const pasta = pastaComDownload(null)
+  midia.prepararDownload(pasta, 'https://youtu.be/c')
+  assert.equal(fs.readFileSync(path.join(pasta, '.fonte-url'), 'utf8'), 'https://youtu.be/c')
+})
+
+test('infoDoVideo guarda o SAR, para a pasta saber que a largura já é a de exibição', () => {
+  assert.equal(infoDoVideo(probe({ width: 1440, height: 1080, sample_aspect_ratio: '4:3' })).sar, 1.333)
+})
+
+test('fonteAtualizada relê a medida da pasta montada antes do pixel quadrado', () => {
+  const f = midia.fonteAtualizada({ arquivo: 'f.mp4', largura: 1440, altura: 1080 }, () => probe({ width: 1440, height: 1080, sample_aspect_ratio: '4:3' }))
+  assert.deepEqual([f.largura, f.altura, f.sar], [1920, 1080, 1.333])
+})
+
+test('fonteAtualizada não relê a fonte que já tem o SAR', () => {
+  const f = { arquivo: 'f.mp4', largura: 1920, altura: 1080, sar: 1.333 }
+  assert.equal(midia.fonteAtualizada(f, () => { throw new Error('não devia ler') }), f)
+})
+
+test('fonteAtualizada deixa a medida guardada quando o vídeo não está na pasta', () => {
+  const f = { arquivo: 'f.mp4', largura: 1440, altura: 1080 }
+  assert.equal(midia.fonteAtualizada(f, null), f)
 })

@@ -207,12 +207,16 @@
     const pendentes = new Map()
     let versao = 0
     const marcar = (chave) => pendentes.set(chave, ++versao)
+    // A versão do documento no banco: quem grava escreve a seguinte à que conhece. Comparar o horário
+    // (`em`) misturaria relógios de máquinas diferentes.
+    let conhecida = 0
     const salvar = () => {
       if (!cap.db) return
       const gravando = new Map(pendentes)
       estado.por = meuId
       estado.em = new Date().toISOString()
-      const dados = { aprovado: estado.aprovado, titulo: estado.titulo, gancho: estado.gancho, descricao: estado.descricao, hashtags: estado.hashtags, por: estado.por, em: estado.em }
+      conhecida += 1
+      const dados = { aprovado: estado.aprovado, titulo: estado.titulo, gancho: estado.gancho, descricao: estado.descricao, hashtags: estado.hashtags, por: estado.por, em: estado.em, v: conhecida }
       escrever(`cortes/${c.id}`, () => cap.db.doc(`cortes/${c.id}`).set(dados)).then(() => {
         for (const [k, v] of gravando) if (pendentes.get(k) === v) pendentes.delete(k)
       }, () => {
@@ -236,8 +240,10 @@
       // Aplica o que veio do banco sem salvar de volta: só quem mexe na mesa grava, e com o próprio nome.
       receber (doc, nomesConhecidos) {
         if (!doc) return
-        // Leitura feita antes da última gravação daqui chega atrasada e traz o estado velho.
-        if (estado.em && doc.em && doc.em < estado.em) return
+        // Leitura de uma versão anterior à última que esta aba conhece chega atrasada e traz o estado velho.
+        const v = Number(doc.v) || 0
+        if (v < conhecida) return
+        conhecida = v
         for (const [chave, campoX] of [['titulo', titulo], ['gancho', gancho], ['descricao', descricao], ['hashtags', hashtags]]) {
           if (pendentes.has(chave) || document.activeElement === campoX.input || doc[chave] == null) continue
           estado[chave] = doc[chave]

@@ -256,3 +256,15 @@ test('argsTrecho deixa o pixel quadrado antes de recortar', () => {
   const a = argsTrecho('f.mp4', 10, 20, 30, 't.mov').args
   assert.equal(a[a.indexOf('-vf') + 1], 'scale=trunc(iw*sar/2)*2:ih,setsar=1,fps=30')
 })
+
+test('pedacos não pula nem repete quadro da fonte na troca de plano dentro de um mantido', () => {
+  const plano = { mantidos: [[1.013, 3.013]], trechos: [{ inicio: 1.013, fim: 3.013 }] }
+  const [a, b] = pedacos(plano, { planos: [{ de: 0, ate: 0.95, tipo: 'tela' }, { de: 0.95, ate: 2.1, tipo: 'tela' }] }, [0.513], [], 30)
+  assert.equal(b.inicio, a.inicio + a.quadros)
+})
+
+test('pedacos não pula quadro na troca de plano a 25 quadros por segundo', () => {
+  const plano = { mantidos: [[1, 3]], trechos: [{ inicio: 1, fim: 3 }] }
+  const [a, b] = pedacos(plano, { planos: [{ de: 0, ate: 0.5, tipo: 'tela' }, { de: 0.5, ate: 2.1, tipo: 'tela' }] }, [0.5], [], 25)
+  assert.equal(b.inicio, a.inicio + a.quadros)
+})

@@ -78,3 +78,17 @@ test('documentoAprovado aceita o gancho editado no limite do card', () => {
   const r = documentoAprovado({ cortes: [corte(1)] }, { 1: { aprovado: true, gancho: 'g'.repeat(60) } })
   assert.equal(r.cortes[0].gancho.length, 60)
 })
+
+test('montarPasta refaz a mesa dela que foi aberta no Finder', () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'mesa-'))
+  const saida = path.join(base, 'artefato')
+  montarPasta({ nome: 'x', cortes: [] }, path.join(base, 'previas'), saida, {}, { fonte: FONTE })
+  fs.writeFileSync(path.join(saida, '.DS_Store'), 'x')
+  assert.doesNotThrow(() => montarPasta({ nome: 'x', cortes: [] }, path.join(base, 'previas'), saida, {}, { fonte: FONTE }))
+})
+
+test('montarPasta recusa a pasta com só um index.html que não é desta skill', () => {
+  const saida = fs.mkdtempSync(path.join(os.tmpdir(), 'site-'))
+  fs.writeFileSync(path.join(saida, 'index.html'), '<h1>outro site</h1>')
+  assert.throws(() => montarPasta({ nome: 'x', cortes: [] }, path.join(saida, 'previas'), saida, {}, { fonte: FONTE }), /não é uma mesa/)
+})

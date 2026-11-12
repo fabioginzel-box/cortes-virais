@@ -143,8 +143,10 @@ function mantidos (a, b, palavras, modo = 'dinamico') {
   let inicio = a
   let fim = b
   if (itens.length) {
-    const primeiro = Math.min(...itens.map((p) => p.s))
-    const ultimo = Math.max(...itens.map((p) => p.e))
+    // O riso que passa da borda do trecho (o pontoDeFim o limita a 3 s) fica fora do `dentro`, mas conta.
+    const eventos = palavras.filter((p) => p.ev && p.s < b && p.e > a)
+    const primeiro = Math.min(...itens.map((p) => p.s), ...eventos.map((p) => Math.max(p.s, a)))
+    const ultimo = Math.max(...itens.map((p) => p.e), ...eventos.map((p) => Math.min(p.e, b)))
     const antes = naBorda(a, primeiro)
     if (antes.length) inicio = Math.max(a, primeiro - 0.12, ...antes.map((p) => Math.min(p.e, primeiro)))
     const depois = naBorda(ultimo, b)
@@ -198,7 +200,15 @@ function palavrasEditadas (palavras, lista, { comVicios = false, correcoes = [] 
     }
     acumulado += b - a
   }
-  return correcoes.length ? aplicarCorrecoes(saida, correcoes) : saida
+  if (!correcoes.length) return saida
+  // Só juntam palavras que se seguem na fonte, a menos de 2 s: a última de um trecho e a primeira do
+  // seguinte, não.
+  const posicao = new Map(palavras.map((p, k) => [p.i, k]))
+  const juntam = (x, y) => {
+    const [a, b] = [posicao.get(x.i), posicao.get(y.i)]
+    return a != null && b > a && palavras[b].s - palavras[a].e < 2 && palavras.slice(a + 1, b).every((p) => p.ev || ehVicio(p.t))
+  }
+  return aplicarCorrecoes(saida, correcoes, { juntam })
 }
 
 function notaDoCorte (notas, pesos = PESOS, minima = NOTA_MINIMA) {
@@ -280,6 +290,7 @@ function conferirCortes (doc, palavras, { duracaoFonte = null, modo = 'dinamico'
   const problemas = []
   const planos = []
   const candidatos = (doc && doc.cortes) || []
+  const avisosDaConferencia = new Map()
   const vezes = new Map()
   for (const c of candidatos) vezes.set(String(c.id), (vezes.get(String(c.id)) || 0) + 1)
   // A folga depois da última palavra não pode passar do fim do vídeo: lá não há quadro para recortar.
@@ -296,14 +307,15 @@ function conferirCortes (doc, palavras, { duracaoFonte = null, modo = 'dinamico'
       const corte = Math.min(ultimo, Math.max(fim.corte, ini.corte + 0.5))
       return { inicio: ini.corte, fim: corte, pedido: { inicio: a, fim: b }, ajuste: { inicio: ini.deslocamento, fim: arred(corte - b) } }
     })
-    // Trechos pedidos em sequência que o ajuste fez se cruzar tocariam a fala duas vezes; a abertura no
-    // ponto alto, que repete de propósito, não foi pedida em sequência.
-    for (let k = 0; k + 1 < trechos.length; k++) {
+    // Trechos pedidos em sequência que o ajuste fez se encontrar viram um só: a fala não toca duas vezes e
+    // a pausa da emenda é cortada. A abertura no ponto alto não foi pedida em sequência.
+    let juntados = 0
+    for (let k = 0; k + 1 < trechos.length;) {
       const [t, prox] = [trechos[k], trechos[k + 1]]
-      if (t.pedido.fim <= prox.pedido.inicio && t.fim > prox.inicio && prox.inicio > t.inicio + 0.5) {
-        t.fim = prox.inicio
-        t.ajuste.fim = arred(t.fim - t.pedido.fim)
-      }
+      if (prox.pedido.inicio < t.pedido.inicio || prox.inicio >= t.fim) { k++; continue }
+      if (prox.fim > t.fim) Object.assign(t, { fim: prox.fim, pedido: { ...t.pedido, fim: prox.pedido.fim }, ajuste: { ...t.ajuste, fim: prox.ajuste.fim } })
+      trechos.splice(k + 1, 1)
+      juntados++
     }
     const modoDoCorte = c.limpeza == null ? modo : c.limpeza
     const lista = trechos.flatMap((t) => mantidos(t.inicio, t.fim, palavras, modoDoCorte))
@@ -319,6 +331,7 @@ function conferirCortes (doc, palavras, { duracaoFonte = null, modo = 'dinamico'
       nota: notaDoCorte(c.notas, pesos, minima),
       limpeza: modoDoCorte
     }
+    if (juntados) avisosDaConferencia.set(plano, [`${juntados + 1} trechos seguidos se encontraram depois do ajuste das bordas e viraram um só`])
     if (duracao < lim.min || duracao > lim.max) {
       problemas.push({ id: c.id, problemas: [`${duracao} s depois da limpeza, fora do limite de ${lim.min} a ${lim.max} s`] })
       continue
@@ -335,7 +348,7 @@ function conferirCortes (doc, palavras, { duracaoFonte = null, modo = 'dinamico'
     else ficam.push(p)
   }
   for (const p of ficam) {
-    p.avisos = avisosDoCorte(p, palavrasEditadas(palavras, p.mantidos, { comVicios: p.limpeza === 'sem' }), lim, ficam.filter((o) => o !== p && o.nota >= p.nota), minima)
+    p.avisos = [...(avisosDaConferencia.get(p) || []), ...avisosDoCorte(p, palavrasEditadas(palavras, p.mantidos, { comVicios: p.limpeza === 'sem' }), lim, ficam.filter((o) => o !== p && o.nota >= p.nota), minima)]
   }
   return { cortes: ficam, descartados, problemas }
 }

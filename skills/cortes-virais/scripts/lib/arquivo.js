@@ -43,4 +43,16 @@ function identidade (arquivo) {
   return [path.resolve(arquivo), s.size, Math.round(s.mtimeMs)]
 }
 
-module.exports = { gerar, temporario, identidade, renomear }
+// A fonte pode ter saído da pasta (disco cheio, HD desmontado) com o cache pronto: vale a identidade que o
+// `fonte` gravou no fonte.json.
+function identidadeDaFonte (f) {
+  try {
+    return identidade(f.arquivo)
+  } catch (e) {
+    if (e.code !== 'ENOENT') throw e
+    if (f.identidade) return f.identidade
+    throw new Error(`não achei o vídeo de origem em ${f.arquivo}: devolva-o para lá ou rode o fonte de novo`)
+  }
+}
+
+module.exports = { gerar, temporario, identidade, identidadeDaFonte, renomear }

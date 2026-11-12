@@ -306,10 +306,33 @@ test('conferirCortes aponta o id repetido', () => {
   assert.match(r.problemas.map((x) => x.problemas.join()).join(), /id 1 repetido/)
 })
 
-test('conferirCortes não deixa o trecho tocar de novo o começo do seguinte', () => {
+test('conferirCortes junta num trecho só os trechos seguidos que o ajuste fez se cruzar', () => {
   const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 0, fim: 13.5 }, { inicio: 14, fim: 30 }] })] }, longas())
-  const [a, b] = r.cortes[0].trechos
-  assert.ok(a.fim <= b.inicio)
+  assert.equal(r.cortes[0].trechos.length, 1)
+})
+
+// Uma palavra a cada 0,5 s a partir de 90 s, com frases acabando em 94,5, 100, 103, 108, 114,5 e 119,5 s.
+function comFrases () {
+  n = 0
+  return Array.from({ length: 80 }, (_, k) => {
+    const s = Number((90 + 0.5 * k).toFixed(2))
+    return p(`p${k}${[94.5, 100, 103, 108, 114.5, 119.5].includes(s) ? '.' : ''}`, s, Number((s + 0.4).toFixed(2)))
+  })
+}
+
+test('conferirCortes junta os trechos pedidos que se encostam por pouco', () => {
+  const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 100.5, fim: 105 }, { inicio: 104.8, fim: 118 }] })] }, comFrases())
+  assert.equal(r.cortes[0].trechos.length, 1)
+})
+
+test('conferirCortes junta o trecho seguinte que o ajuste levou ao começo do primeiro', () => {
+  const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 100, fim: 102 }, { inicio: 102, fim: 125 }] })] }, comFrases())
+  assert.equal(r.cortes[0].trechos.length, 1)
+})
+
+test('conferirCortes avisa quando juntou dois trechos', () => {
+  const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 0, fim: 13.5 }, { inicio: 14, fim: 30 }] })] }, longas())
+  assert.match(r.cortes[0].avisos.join(), /viraram um só/)
 })
 
 test('conferirCortes deixa a abertura no ponto alto repetir o trecho de propósito', () => {
@@ -353,4 +376,31 @@ test('conferirCortes avisa quando passa de 3 hashtags', () => {
 test('conferirCortes não avisa com 3 hashtags', () => {
   const r = conferirCortes({ cortes: [candidato({ hashtags: ['#a', '#b', '#c'], trechos: [{ inicio: 4, fim: 35 }] })] }, longas())
   assert.doesNotMatch(r.cortes[0].avisos.join(), /hashtags/)
+})
+
+test('conferirCortes corta a pausa da emenda dos trechos que se encontraram', () => {
+  n = 0
+  const lista = [...seguidas(95, 106.3), ...seguidas(109.4, 130)]
+  const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 100, fim: 106.5 }, { inicio: 107, fim: 118 }] })] }, lista)
+  const naPausa = r.cortes[0].mantidos.reduce((t, [a, b]) => t + Math.max(0, Math.min(b, 109.4) - Math.max(a, 106.3)), 0)
+  assert.ok(naPausa < 0.5, `sobraram ${naPausa.toFixed(2)} s da pausa`)
+})
+
+test('conferirCortes mantém separados os trechos seguidos que não se encontram', () => {
+  const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 0, fim: 13.5 }, { inicio: 24, fim: 50 }] })] }, longas())
+  assert.equal(r.cortes[0].trechos.length, 2)
+})
+
+test('mantidos não corta o riso longo que passa do fim do trecho', () => {
+  n = 0
+  const lista = [...seguidas(30, 50), p('(laughter)', 50, 56, null, { ev: true }), p('ahn', 52, 52.3), ...seguidas(58, 70)]
+  const m = mantidos(30, 53.15, lista, 'dinamico')
+  assert.ok(m[m.length - 1][1] >= 53)
+})
+
+test('palavrasEditadas não junta na correção palavras de trechos que não se seguem na fonte', () => {
+  n = 0
+  const lista = [p('Conheci', 10, 10.4), p('a', 10.5, 10.6), p('Ác.', 10.7, 11), p('Mi', 130, 130.4), p('depois', 130.5, 130.9)]
+  const editadas = palavrasEditadas(lista, [[9.9, 11.1], [129.9, 131]], { correcoes: [{ de: 'ac mi', para: 'Acme' }] })
+  assert.deepEqual(editadas.map((x) => x.t), ['Conheci', 'a', 'Ác.', 'Mi', 'depois'])
 })

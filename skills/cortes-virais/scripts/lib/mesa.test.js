@@ -10,6 +10,7 @@ const path = require('node:path')
 const { pathToFileURL } = require('node:url')
 const { abrir, acharChrome } = require('./chrome')
 const { dadosDaMesa, paginaDaMesa } = require('./artefato')
+const { abrirMesaLocal } = require('./mesa-local')
 
 const semChrome = !acharChrome() || typeof WebSocket === 'undefined'
 
@@ -85,11 +86,13 @@ test('a mesa não troca o que se acabou de digitar por uma leitura velha', opcoe
   assert.deepEqual([await pagina.avaliar(`document.getElementById('titulo-1').value`), gravados.length && gravados[gravados.length - 1].titulo], ['Título novo', 'Título novo'])
 })
 
-test('a mesa não desmarca a aprovação por uma leitura feita antes da gravação', opcoes, async () => {
+// A gravação de outra pessoa na mesma versão, com o relógio adiantado, chega enquanto a daqui ainda vai
+// para o banco: só a proteção do que está pendente segura a aprovação.
+test('a mesa não desmarca a aprovação por uma leitura que chega durante a gravação', opcoes, async () => {
   await abrirMesa()
   await pagina.avaliar('window.latencia = 800')
   await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
-  await pagina.avaliar(`window.ler(${daAna()})`)
+  await pagina.avaliar(`window.ler(${daAna({ v: 1, em: '2099-01-01T00:00:00.000Z' })})`)
   assert.equal(await pagina.avaliar(`document.getElementById('aprovar-1').checked`), true)
 })
 
@@ -97,17 +100,43 @@ test('a mesa não grava a aprovação desfeita por uma leitura velha na próxima
   await abrirMesa()
   await pagina.avaliar('window.latencia = 800')
   await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
-  await pagina.avaliar(`window.ler(${daAna()})`)
+  await pagina.avaliar(`window.ler(${daAna({ v: 1, em: '2099-01-01T00:00:00.000Z' })})`)
   await pagina.avaliar(`(() => { const d = document.getElementById('descricao-1'); d.focus(); d.value = 'desc nova'; d.dispatchEvent(new Event('input')); d.blur() })()`)
   assert.deepEqual((await gravacoes(2)).map((g) => g.aprovado), [true, true])
 })
 
-test('a mesa ignora a leitura anterior à última gravação daqui', opcoes, async () => {
+test('a mesa ignora a leitura repetida de antes da última gravação daqui', opcoes, async () => {
+  await abrirMesa()
+  await pagina.avaliar(`window.ler(${daAna({ v: 3 })})`)
+  await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
+  await gravacoes(1)
+  await pagina.avaliar(`window.ler(${daAna({ v: 3 })})`)
+  assert.equal(await pagina.avaliar(`document.getElementById('aprovar-1').checked`), true)
+})
+
+test('a mesa ignora a leitura velha mesmo com o relógio de quem gravou adiantado', opcoes, async () => {
+  await abrirMesa()
+  await pagina.avaliar(`window.ler(${daAna({ v: 1, em: '2099-01-01T00:00:00.000Z' })})`)
+  await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
+  await gravacoes(1)
+  await pagina.avaliar(`window.ler(${daAna({ v: 1, em: '2099-01-01T00:00:00.000Z' })})`)
+  assert.equal(await pagina.avaliar(`document.getElementById('aprovar-1').checked`), true)
+})
+
+test('a mesa aplica a gravação mais nova de outra pessoa mesmo com o relógio dela atrasado', opcoes, async () => {
   await abrirMesa()
   await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
-  await esperar(50)
-  await pagina.avaliar(`window.ler(${daAna({ em: '2000-01-01T00:00:00.000Z' })})`)
-  assert.equal(await pagina.avaliar(`document.getElementById('aprovar-1').checked`), true)
+  await gravacoes(1)
+  await pagina.avaliar(`window.ler(${daAna({ v: 2, aprovado: true, titulo: 'Título da Ana', em: '2000-01-01T00:00:00.000Z' })})`)
+  assert.equal(await pagina.avaliar(`document.getElementById('titulo-1').value`), 'Título da Ana')
+})
+
+test('a mesa grava a versão seguinte à que conhece', opcoes, async () => {
+  await abrirMesa()
+  await pagina.avaliar(`window.ler(${daAna({ v: 4 })})`)
+  await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
+  const [gravado = {}] = await gravacoes(1)
+  assert.equal(gravado.v, 5)
 })
 
 test('a mesa grava a aprovação com o nome de quem marcou', opcoes, async () => {
@@ -125,4 +154,26 @@ test('a mesa arredonda a duração sem mostrar 60 segundos', opcoes, async () =>
 test('a mesa não escreve "null" quando não há a visão geral do Gemini', opcoes, async () => {
   await abrirMesa()
   assert.doesNotMatch(await pagina.avaliar(`document.getElementById('fichas').textContent`), /null/)
+})
+
+// A mesa local de verdade: a página lê a versão gravada pela API local e grava a seguinte.
+test('a mesa local devolve a versão gravada e a página grava a seguinte', opcoes, async () => {
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'mesa-local-'))
+  const pastaDaMesa = path.join(base, 'mesa-local')
+  const pastaDaColecao = path.join(base, 'mesa', 'cortes')
+  fs.mkdirSync(pastaDaMesa, { recursive: true })
+  fs.mkdirSync(pastaDaColecao, { recursive: true })
+  fs.writeFileSync(path.join(pastaDaMesa, 'index.html'), paginaDaMesa(dadosDaMesa(plano), { fonte: FONTE, local: true }))
+  fs.writeFileSync(path.join(pastaDaColecao, '1.json'), daAna({ v: 7, titulo: 'Título gravado' }))
+  const mesa = await abrirMesaLocal({ pastaDaMesa, pastaDaColecao })
+  try {
+    await pagina.carregar(mesa.url)
+    await pagina.avaliar(`new Promise((r) => { const i = setInterval(() => { if (document.getElementById('titulo-1').value === 'Título gravado') { clearInterval(i); r() } }, 20) })`)
+    await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
+    const ler = () => JSON.parse(fs.readFileSync(path.join(pastaDaColecao, '1.json'), 'utf8'))
+    for (let i = 0; i < 50 && !ler().aprovado; i++) await esperar(100)
+    assert.deepEqual([ler().aprovado, ler().v], [true, 8])
+  } finally {
+    await mesa.fechar()
+  }
 })

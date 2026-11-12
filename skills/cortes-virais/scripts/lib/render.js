@@ -65,7 +65,9 @@ function pedacos (plano, enquadramento, deslocamentos, impactos = [], fps = 30) 
       const q0 = Math.round(de * fps)
       const quadros = Math.round(ate * fps) - q0
       if (quadros <= 0) continue
-      const inicio = Math.round((a - deslocamentos[k[m]] + (de - editado)) * fps)
+      // Conta a partir do quadro em que o mantido começa: arredondar cada pedaço por si pularia ou
+      // repetiria um quadro da fonte na troca de plano no meio da fala.
+      const inicio = Math.round((a - deslocamentos[k[m]]) * fps) + q0 - Math.round(editado * fps)
       lista.push({ entrada: k[m], inicio, quadros, fps, de: n3(inicio / fps), ate: n3((inicio + quadros) / fps), editado: n3(q0 / fps), plano: sg.plano, zoom: sg.zoom })
     }
     editado = fimEditado

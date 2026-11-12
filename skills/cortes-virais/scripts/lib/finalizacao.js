@@ -119,12 +119,12 @@ function lerDuracaoDe (ffprobe, arquivo) {
   return lerDuracao(rodar(ffprobe, argsDuracao(arquivo), { saida: true }))
 }
 
-async function prepararCartao ({ marca, trabalho, fps, ffmpeg, ffprobe, fonte, fim }) {
+async function prepararCartao ({ marca, trabalho, fps, ffmpeg, ffprobe, fonte, idFonte, fim }) {
   const c = marca.finalizacao.cartao
   const audio = arquivoDoCanal(marca, c.audio)
   const duracao = duracaoDoCartao(c, audio ? lerDuracaoDe(ffprobe, audio).duracao : null)
   const instante = fim - CENA_ANTES_DO_FIM
-  const cena = gerar(path.join(trabalho, `cena-${hashDe([identidade(fonte), instante])}.png`), (tmp) => rodar(ffmpeg, argsQuadroDaCena(fonte, instante, tmp)))
+  const cena = gerar(path.join(trabalho, `cena-${hashDe([idFonte, instante])}.png`), (tmp) => rodar(ffmpeg, argsQuadroDaCena(fonte, instante, tmp)))
   const dados = dadosDoCartao(marca, cena)
   const logo = arquivoDoCanal(marca, c.logo)
   const chave = hashDe([fs.readFileSync(TEMPLATE, 'utf8'), impressao(marca), dados, logo && identidade(logo), audio && identidade(audio), fps, duracao])
@@ -145,11 +145,11 @@ function prepararVideo ({ marca, cache, fps, ffmpeg, ffprobe }) {
   return { tipo: 'video', entrada: imagem, som, duracao, fusao: FUSAO }
 }
 
-// `fim` é o instante, no vídeo de origem, em que o último trecho do corte acaba; `cache` guarda o que
-// serve a todos os cortes do vídeo (o vídeo de assinatura convertido).
-async function prepararFinalizacao ({ marca, trabalho, cache, fps, ffmpeg, ffprobe, fonte, fim }) {
+// `fim` é o instante, no vídeo de origem, em que o último trecho do corte acaba, e `idFonte` a identidade
+// dele; `cache` guarda o que serve a todos os cortes do vídeo (o vídeo de assinatura convertido).
+async function prepararFinalizacao ({ marca, trabalho, cache, fps, ffmpeg, ffprobe, fonte, idFonte, fim }) {
   const modo = marca.finalizacao.modo
-  if (modo === 'cartao') return prepararCartao({ marca, trabalho, fps, ffmpeg, ffprobe, fonte, fim })
+  if (modo === 'cartao') return prepararCartao({ marca, trabalho, fps, ffmpeg, ffprobe, fonte, idFonte, fim })
   if (modo === 'video') return prepararVideo({ marca, cache, fps, ffmpeg, ffprobe })
   return null
 }
