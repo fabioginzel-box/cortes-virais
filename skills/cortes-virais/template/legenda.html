@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Legenda</title>
+<style>
+  :root {
+    --texto: #ffffff;
+    --contorno: #000000;
+    --ativa-fundo: #ffd60a;
+    --ativa-texto: #000000;
+    --destaque: #ffd60a;
+    --card-fundo: #ffffff;
+    --card-texto: #000000;
+    --peso: 800;
+  }
+  html, body { margin: 0; padding: 0; background: transparent; }
+  body { width: 1080px; height: 1920px; position: relative; overflow: hidden; font-family: 'Marca', sans-serif; font-synthesis: none; }
+
+  /* A zona segura dos shorts: 210 px em cima, 450 embaixo, 60 à esquerda e 150 à direita, que
+     cobrem YouTube, Reels e TikTok. O card e a legenda ficam centrados nela. */
+  #gancho {
+    position: absolute; top: 250px; left: 60px; width: 870px;
+    display: none; justify-content: center;
+  }
+  #gancho .card {
+    background: var(--card-fundo); color: var(--card-texto); border-radius: 28px; padding: 26px 36px 30px;
+    font-weight: var(--peso); line-height: 1.08; text-align: center; letter-spacing: -0.5px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35); max-width: 800px; text-wrap: balance;
+  }
+  #legenda {
+    position: absolute; left: 60px; width: 870px; bottom: 480px;
+    display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 6px 18px;
+    font-weight: var(--peso); color: var(--texto); text-align: center; line-height: 1.05;
+  }
+  #legenda .p {
+    padding: 4px 16px 10px; border-radius: 18px;
+    -webkit-text-stroke: 3px var(--contorno); paint-order: stroke fill;
+    text-shadow: 0 4px 0 var(--contorno), 0 8px 24px rgba(0, 0, 0, 0.55);
+  }
+  body.sem-contorno #legenda .p {
+    -webkit-text-stroke: 0;
+    text-shadow: 0 3px 12px rgba(0, 0, 0, 0.75), 0 1px 3px rgba(0, 0, 0, 0.6);
+  }
+  #legenda .p.chave { color: var(--destaque); }
+  body.ativa-fundo #legenda .p.ativa {
+    background: var(--ativa-fundo); color: var(--ativa-texto);
+    -webkit-text-stroke: 0; text-shadow: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  body.ativa-cor #legenda .p.ativa { color: var(--ativa-texto); }
+</style>
+</head>
+<body class="ativa-fundo">
+<div id="gancho"><div class="card"></div></div>
+<div id="legenda"></div>
+<script>
+  // tema: { fonte: { url, peso }, cores: {...}, contorno: bool, ativa: 'fundo'|'cor'|'sem', tamanho: { maximo, minimo } }
+  // estado: { gancho: texto ou null, palavras: [texto], ativa: índice, chaves: [bool] opcional }
+  window.LEGENDA = (() => {
+    const gancho = document.getElementById('gancho')
+    const card = gancho.querySelector('.card')
+    const legenda = document.getElementById('legenda')
+    let tamanho = { maximo: 92, minimo: 60 }
+
+    async function tema (t) {
+      const raiz = document.documentElement.style
+      const nomes = { texto: '--texto', contorno: '--contorno', ativaFundo: '--ativa-fundo', ativaTexto: '--ativa-texto', destaque: '--destaque', cardFundo: '--card-fundo', cardTexto: '--card-texto' }
+      for (const [k, v] of Object.entries(t.cores || {})) if (nomes[k]) raiz.setProperty(nomes[k], v)
+      raiz.setProperty('--peso', String(t.fonte.peso))
+      document.body.className = `ativa-${t.ativa}${t.contorno ? '' : ' sem-contorno'}`
+      if (t.tamanho) tamanho = t.tamanho
+      const face = new FontFace('Marca', `url("${t.fonte.url}")`, { weight: String(t.fonte.peso) })
+      await face.load()
+      document.fonts.add(face)
+      await document.fonts.ready
+      return true
+    }
+
+    // Quem quebra a frase é o bloco; encolher aqui só garante que nada sai da zona segura.
+    function caber (el, tamanhoInicial, minimo, linhas, folga) {
+      for (let px = tamanhoInicial; px >= minimo; px -= 2) {
+        el.style.fontSize = px + 'px'
+        const estilo = getComputedStyle(el)
+        const altura = parseFloat(estilo.lineHeight) || px * 1.08
+        const conteudo = el.scrollHeight - parseFloat(estilo.paddingTop) - parseFloat(estilo.paddingBottom)
+        if (conteudo <= altura * linhas + folga) return px
+      }
+      return minimo
+    }
+
+    async function montar (e) {
+      await document.fonts.ready
+      if (e.gancho) {
+        gancho.style.display = 'flex'
+        card.textContent = e.gancho
+        caber(card, 70, 44, 2, 4)
+      } else {
+        gancho.style.display = 'none'
+      }
+      legenda.textContent = ''
+      ;(e.palavras || []).forEach((t, i) => {
+        const s = document.createElement('span')
+        s.className = 'p' + (e.chaves && e.chaves[i] ? ' chave' : '') + (i === e.ativa ? ' ativa' : '')
+        s.textContent = t
+        legenda.append(s)
+      })
+      if (e.palavras && e.palavras.length) caber(legenda, tamanho.maximo, tamanho.minimo, 2, 40)
+      return { largura: 1080, altura: 1920 }
+    }
+
+    return { tema, montar }
+  })()
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Rostos</title>
+</head>
+<body>
+<script type="module">
+  // O detector do FaceLandmarker só acha rosto grande; o de longo alcance acha o de podcast, e o
+  // FaceLandmarker mede a boca (jawOpen) num recorte em volta de cada rosto.
+  import { FilesetResolver, FaceDetector, FaceLandmarker } from '/mp/vision_bundle.mjs'
+
+  const carregar = (url) => new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve(img)
+    img.onerror = () => reject(new Error('não carreguei ' + url))
+    img.src = url
+  })
+
+  let detector = null
+  let marcador = null
+  const tela = document.createElement('canvas')
+  tela.width = 256
+  tela.height = 256
+
+  async function iniciar () {
+    const arquivos = await FilesetResolver.forVisionTasks('/mp/wasm')
+    detector = await FaceDetector.createFromOptions(arquivos, {
+      baseOptions: { modelAssetPath: '/mp/blaze_face_full_range.tflite', delegate: 'CPU' },
+      runningMode: 'IMAGE',
+      minDetectionConfidence: 0.45
+    })
+    marcador = await FaceLandmarker.createFromOptions(arquivos, {
+      baseOptions: { modelAssetPath: '/mp/face_landmarker.task', delegate: 'CPU' },
+      runningMode: 'IMAGE',
+      numFaces: 1,
+      minFaceDetectionConfidence: 0.3,
+      outputFaceBlendshapes: true
+    })
+  }
+
+  function boca (img, b) {
+    const lado = Math.max(b.width, b.height) * 2.2
+    const x = b.originX + b.width / 2 - lado / 2
+    const y = b.originY + b.height / 2 - lado / 2
+    const ctx = tela.getContext('2d')
+    ctx.clearRect(0, 0, tela.width, tela.height)
+    ctx.drawImage(img, x, y, lado, lado, 0, 0, tela.width, tela.height)
+    const r = marcador.detect(tela)
+    const formas = r.faceBlendshapes && r.faceBlendshapes[0] && r.faceBlendshapes[0].categories
+    const jaw = formas && formas.find((c) => c.categoryName === 'jawOpen')
+    return jaw ? jaw.score : null
+  }
+
+  async function analisar (urls) {
+    const r4 = (v) => Math.round(v * 10000) / 10000
+    const saida = []
+    for (const url of urls) {
+      const img = await carregar(url)
+      const W = img.naturalWidth
+      const H = img.naturalHeight
+      const r = detector.detect(img)
+      saida.push((r.detections || []).map((d) => {
+        const b = d.boundingBox
+        const m = boca(img, b)
+        return {
+          cx: r4((b.originX + b.width / 2) / W),
+          cy: r4((b.originY + b.height / 2) / H),
+          w: r4(b.width / W),
+          h: r4(b.height / H),
+          boca: m == null ? null : r4(m),
+          nota: r4(d.categories && d.categories[0] ? d.categories[0].score : 0)
+        }
+      }))
+    }
+    return saida
+  }
+
+  window.ROSTOS = { analisar }
+  window.ROSTOS_PRONTO = iniciar().then(() => true)
+</script>
+</body>
+</html>

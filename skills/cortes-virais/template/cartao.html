@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Cartão final</title>
+<style>
+  :root { --fundo: #0e0e12; --titulo: #ffffff; --botao: #ffffff; --botao-texto: #000000; --peso: 800; }
+  html, body { margin: 0; padding: 0; }
+  body { width: 1080px; height: 1920px; position: relative; overflow: hidden; background: var(--fundo);
+    font-family: 'Marca', sans-serif; font-synthesis: none; -webkit-font-smoothing: antialiased; }
+
+  #cena { position: absolute; inset: -80px; background-size: cover; background-position: center;
+    filter: blur(38px) saturate(1.15); transform: scale(1.08); }
+  #veu { position: absolute; inset: 0; background: var(--fundo); opacity: 0.62; }
+
+  /* Tudo dentro da zona segura dos shorts: 210 px em cima, 450 embaixo, 60 à esquerda e 150 à direita. */
+  #pilha { position: absolute; left: 60px; width: 870px; top: 210px; bottom: 450px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 56px; text-align: center; }
+  #logo { max-width: 520px; max-height: 240px; object-fit: contain; }
+  #titulo { color: var(--titulo); font-weight: var(--peso); font-size: 132px; line-height: 1.02; letter-spacing: -1px;
+    max-width: 870px; text-wrap: balance; }
+  #botao .rotulo { display: inline-block; background: var(--botao); color: var(--botao-texto); font-weight: var(--peso);
+    font-size: 60px; line-height: 1.1; padding: 30px 64px 34px; border-radius: 999px; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35); }
+  #apoio { color: var(--titulo); opacity: 0.82; font-size: 40px; font-weight: var(--peso); }
+  .vazio { display: none !important; }
+
+  @keyframes entrar { from { opacity: 0; transform: translateY(40px) scale(0.96); } to { opacity: 1; transform: none; } }
+  @keyframes pulsar { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+  #logo { animation: entrar 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0.05s both; }
+  #titulo { animation: entrar 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.15s both; }
+  #botao { animation: entrar 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s both; }
+  #botao .rotulo { animation: pulsar 0.6s ease-in-out 1.1s both; }
+  #apoio { animation: entrar 0.45s ease-out 0.55s both; }
+</style>
+</head>
+<body>
+<div id="cena"></div>
+<div id="veu"></div>
+<div id="pilha">
+  <img id="logo" alt="">
+  <div id="titulo"></div>
+  <div id="botao"><span class="rotulo"></span></div>
+  <div id="apoio"></div>
+</div>
+<script>
+  // dados: { fonte: { url, peso }, cores: { fundo, titulo, botao, botaoTexto }, titulo, botao, apoio, logo, cena }
+  window.CARTAO = (() => {
+    const $ = (s) => document.querySelector(s)
+
+    function caber (el, inicial, minimo, linhas) {
+      for (let px = inicial; px >= minimo; px -= 4) {
+        el.style.fontSize = px + 'px'
+        const altura = parseFloat(getComputedStyle(el).lineHeight) || px * 1.02
+        if (el.scrollHeight <= altura * linhas + 4 && el.scrollWidth <= el.clientWidth + 1) return px
+      }
+      return minimo
+    }
+
+    async function carregarImagem (img, url) {
+      if (!url) { img.classList.add('vazio'); return }
+      img.src = url
+      await img.decode()
+    }
+
+    async function pronto (d) {
+      const raiz = document.documentElement.style
+      raiz.setProperty('--fundo', d.cores.fundo)
+      raiz.setProperty('--titulo', d.cores.titulo)
+      raiz.setProperty('--botao', d.cores.botao)
+      raiz.setProperty('--botao-texto', d.cores.botaoTexto)
+      raiz.setProperty('--peso', String(d.fonte.peso))
+      const face = new FontFace('Marca', `url("${d.fonte.url}")`, { weight: String(d.fonte.peso) })
+      await face.load()
+      document.fonts.add(face)
+      await document.fonts.ready
+
+      $('#cena').style.backgroundImage = d.cena ? `url("${d.cena}")` : 'none'
+      for (const [seletor, texto] of [['#titulo', d.titulo], ['#botao .rotulo', d.botao], ['#apoio', d.apoio]]) {
+        $(seletor).textContent = texto || ''
+      }
+      if (!d.titulo) $('#titulo').classList.add('vazio')
+      if (!d.botao) $('#botao').classList.add('vazio')
+      if (!d.apoio) $('#apoio').classList.add('vazio')
+      await carregarImagem($('#logo'), d.logo)
+      if (d.cena) await new Promise((resolve) => { const i = new Image(); i.onload = i.onerror = resolve; i.src = d.cena })
+      if (d.titulo) caber($('#titulo'), 132, 72, 2)
+
+      const animacoes = document.getAnimations()
+      animacoes.forEach((a) => a.pause())
+      const fim = Math.max(0, ...animacoes.map((a) => {
+        const t = a.effect.getComputedTiming()
+        return (t.delay || 0) + (t.activeDuration || 0)
+      }))
+      return fim / 1000
+    }
+
+    function irPara (segundos) {
+      document.getAnimations().forEach((a) => { a.currentTime = segundos * 1000 })
+      return true
+    }
+
+    return { pronto, irPara }
+  })()
+</script>
+</body>
+</html>

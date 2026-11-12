@@ -1,0 +1,13 @@
+{
+  "name": "cortes-virais",
+  "owner": { "name": "Fabio Ginzel" },
+  "description": "A skill cortes-virais, para o Claude Code.",
+  "plugins": [
+    {
+      "name": "cortes-virais",
+      "source": "./",
+      "description": "Transforma um vídeo longo em cortes verticais 9:16 para Shorts, Reels e TikTok, na identidade visual do seu canal, com mesa de aprovação. Só no Claude Code; usa o Replicate.",
+      "version": "0.1.0"
+    }
+  ]
+}

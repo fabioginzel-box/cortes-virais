@@ -1,0 +1,290 @@
+<title>{{TITULO}}</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  @font-face { font-family: 'Marca'; font-weight: 800; src: url('{{FONTE}}'); }
+
+  /* Mesa de corte: cada candidato é uma tira, com a prévia vertical à esquerda e a ficha à direita;
+     em tela estreita, a ficha desce para baixo da prévia. */
+  :root {
+    --mesa: #f1f0f7;
+    --papel: #ffffff;
+    --tinta: #1b1930;
+    --grafite: #625f7c;
+    --risco: #dcd9ea;
+    --marca: #6d33d6;
+    --marca-tinta: #ffffff;
+    --ok: #17734c;
+    --ok-fundo: #e2f4ea;
+    --alerta: #8a5a00;
+    --alerta-fundo: #fff3d6;
+    --palco: #000000;
+    --titulo: 'Marca', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+    --texto: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --mesa: #0e0d16; --papel: #191826; --tinta: #ecebf6; --grafite: #a6a3bf; --risco: #2d2b3f;
+      --marca: #b48cff; --marca-tinta: #17122b; --ok: #66d6a2; --ok-fundo: #10291f; --alerta: #f2c46b; --alerta-fundo: #2f2410;
+      --palco: #000000; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --mesa: #0e0d16; --papel: #191826; --tinta: #ecebf6; --grafite: #a6a3bf; --risco: #2d2b3f;
+    --marca: #b48cff; --marca-tinta: #17122b; --ok: #66d6a2; --ok-fundo: #10291f; --alerta: #f2c46b; --alerta-fundo: #2f2410;
+    --palco: #000000; color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body { background: var(--mesa); color: var(--tinta); font: 15px/1.5 var(--texto);
+    padding-block: 20px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .conteudo { max-width: 1180px; margin: 0 auto; display: grid; gap: 20px; }
+
+  header { display: grid; gap: 10px; }
+  h1 { margin: 0; font: 800 28px/1.15 var(--titulo); text-wrap: balance; }
+  .fichas { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ficha { border: 1px solid var(--risco); background: var(--papel); border-radius: 999px; padding: 3px 12px; font-size: 13px; color: var(--grafite); font-variant-numeric: tabular-nums; }
+  .ficha b { color: var(--tinta); font-weight: 600; }
+  .ajuda { margin: 0; color: var(--grafite); max-width: 72ch; }
+  .situacao { border-radius: 10px; padding: 10px 14px; font-weight: 600; border: 1px solid var(--risco); background: var(--papel); }
+  .situacao.aprovada { background: var(--ok-fundo); border-color: var(--ok); color: var(--ok); }
+
+  .corte { background: var(--papel); border: 1px solid var(--risco); border-radius: 14px; padding: 16px; display: grid;
+    grid-template-columns: 270px minmax(0, 1fr); gap: 20px; }
+  .corte.aprovado { border-color: var(--ok); box-shadow: 0 0 0 2px var(--ok-fundo); }
+  .previa { margin: 0; display: grid; gap: 6px; align-content: start; }
+  .previa video { width: 100%; max-width: 100%; aspect-ratio: 9 / 16; background: var(--palco); border-radius: 8px; display: block; }
+  .previa figcaption { font-size: 12px; color: var(--grafite); }
+
+  .ficha-do-corte { display: grid; gap: 14px; align-content: start; min-width: 0; }
+  .cabeca { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .cabeca h2 { margin: 0; font: 800 18px/1.2 var(--titulo); margin-right: auto; }
+  .nota { font: 800 22px/1 var(--titulo); font-variant-numeric: tabular-nums; color: var(--marca); }
+  .nota small { font: 600 12px/1 var(--texto); color: var(--grafite); margin-left: 2px; }
+  .pilula { font-size: 12px; border-radius: 999px; padding: 2px 10px; border: 1px solid var(--risco); color: var(--grafite); }
+
+  .notas { display: grid; grid-template-columns: max-content minmax(0, 1fr) 3ch; gap: 4px 10px; align-items: center; font-size: 13px; color: var(--grafite); }
+  .barra { height: 6px; border-radius: 3px; background: var(--risco); overflow: hidden; }
+  .barra i { display: block; height: 100%; background: var(--marca); }
+  .notas span:last-child, .notas .valor { text-align: right; font-variant-numeric: tabular-nums; color: var(--tinta); }
+
+  .porque { margin: 0; }
+  .avisos { margin: 0; padding: 8px 12px 8px 28px; border-radius: 10px; background: var(--alerta-fundo); color: var(--alerta); font-size: 13px; }
+
+  .campos { display: grid; gap: 10px; }
+  label { display: grid; gap: 3px; font-size: 13px; color: var(--grafite); }
+  input[type=text], textarea { width: 100%; background: var(--mesa); border: 1px solid var(--risco); color: var(--tinta); border-radius: 8px; padding: 8px 10px; font: inherit; }
+  textarea { min-height: 72px; resize: vertical; }
+  .conta { font-size: 12px; color: var(--grafite); font-variant-numeric: tabular-nums; }
+  .conta.passou { color: var(--alerta); }
+  details { border-top: 1px solid var(--risco); padding-top: 8px; }
+  summary { cursor: pointer; font-size: 13px; color: var(--grafite); }
+  details p { margin: 8px 0 0; max-width: 72ch; }
+
+  .acoes { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .aprovar { display: inline-flex; gap: 8px; align-items: center; font-weight: 600; color: var(--tinta); font-size: 15px; cursor: pointer;
+    border: 1px solid var(--risco); border-radius: 10px; padding: 8px 14px; }
+  .aprovar input { width: 18px; height: 18px; accent-color: var(--ok); }
+  .corte.aprovado .aprovar { border-color: var(--ok); color: var(--ok); background: var(--ok-fundo); }
+  button.comentar { font: inherit; font-size: 13px; color: var(--grafite); background: none; border: 1px solid var(--risco); border-radius: 10px; padding: 8px 12px; cursor: pointer; }
+  .quem { font-size: 13px; color: var(--grafite); }
+  :focus-visible { outline: 2px solid var(--marca); outline-offset: 2px; }
+
+  @media (max-width: 720px) {
+    .corte { grid-template-columns: minmax(0, 1fr); }
+    .previa { max-width: 320px; }
+  }
+</style>
+
+<div class="conteudo">
+  <header>
+    <h1 id="titulo"></h1>
+    <div class="fichas" id="fichas"></div>
+    <p class="ajuda">Assista a cada prévia e marque <b>Aprovar</b> nos cortes que vão para o canal; de 3 a 5 por vídeo costuma bastar. Dá para mudar o título, o texto do gancho (o card dos primeiros 4 segundos), a descrição e as hashtags: a prévia mostra o texto original, e o corte final sai com o daqui. Quando terminar, volte à conversa e diga "gera os cortes aprovados".</p>
+    <div class="situacao" id="situacao" role="status"></div>
+  </header>
+  <main id="lista" class="conteudo"></main>
+</div>
+
+<!-- CORTES -->
+<script>
+(() => {
+  const DOC = JSON.parse(document.getElementById('dados-cortes').textContent)
+  const NOMES_DAS_NOTAS = { gancho: 'Gancho', sozinho: 'Faz sentido sozinho', emocao: 'Emoção', valor: 'Valor', desfecho: 'Desfecho' }
+  const cap = { db: null, user: null, comments: null }
+  let meuId = null
+
+  const el = (tag, props, filhos) => {
+    const e = document.createElement(tag)
+    if (props) for (const [k, v] of Object.entries(props)) {
+      if (k === 'class') e.className = v
+      else if (k.startsWith('on')) e.addEventListener(k.slice(2), v)
+      else if (k in e) e[k] = v
+      else e.setAttribute(k, v)
+    }
+    for (const f of [].concat(filhos || [])) if (f != null) e.append(f)
+    return e
+  }
+  const atraso = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
+  const hora = (iso) => { try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
+  const segundos = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
+  const usar = (nome) => (window.claude && window.claude.use ? window.claude.use(nome).catch(() => null) : Promise.resolve(null))
+  const filas = {}
+  const escrever = (caminho, op) => {
+    filas[caminho] = (filas[caminho] || Promise.resolve()).catch(() => {}).then(op)
+    return filas[caminho]
+  }
+
+  document.getElementById('titulo').textContent = DOC.titulo
+  document.getElementById('fichas').append(
+    el('span', { class: 'ficha' }, [el('b', null, String(DOC.cortes.length)), ' candidatos']),
+    el('span', { class: 'ficha' }, ['vídeo de ', el('b', null, segundos(DOC.duracaoFonte || 0))]),
+    DOC.visaoGeral && DOC.visaoGeral.tipo ? el('span', { class: 'ficha' }, [el('b', null, DOC.visaoGeral.tipo), DOC.visaoGeral.pessoas ? ` com ${DOC.visaoGeral.pessoas} pessoas` : '']) : null
+  )
+
+  const cartoes = DOC.cortes.map((c) => criarCartao(c))
+  document.getElementById('lista').append(...cartoes.map((k) => k.secao))
+  atualizarSituacao()
+
+  function criarCartao (c) {
+    const estado = { aprovado: false, titulo: c.titulo, gancho: c.gancho, descricao: c.descricao || '', hashtags: (c.hashtags || []).join(' '), por: null, em: null }
+    const caixa = el('input', { type: 'checkbox', id: `aprovar-${c.id}`, disabled: true })
+    const quem = el('span', { class: 'quem' })
+    const contador = (input, limite) => {
+      const conta = el('span', { class: 'conta' })
+      const atualizar = () => {
+        const n = [...input.value].length
+        conta.textContent = `${n}/${limite}`
+        conta.classList.toggle('passou', n > limite)
+      }
+      input.addEventListener('input', atualizar)
+      atualizar()
+      return { conta, atualizar }
+    }
+    const campo = (rotulo, id, valor, limite, longo) => {
+      const input = longo ? el('textarea', { id, value: valor }) : el('input', { type: 'text', id, value: valor })
+      const c = limite ? contador(input, limite) : { conta: null, atualizar: () => {} }
+      return { input, atualizar: c.atualizar, label: el('label', { for: id }, [rotulo, input, c.conta]) }
+    }
+    const titulo = campo('Título do Short', `titulo-${c.id}`, estado.titulo, 100)
+    const gancho = campo('Gancho (card dos primeiros 4 s)', `gancho-${c.id}`, estado.gancho, 40)
+    const descricao = campo('Descrição', `descricao-${c.id}`, estado.descricao, 0, true)
+    const hashtags = campo('Hashtags', `hashtags-${c.id}`, estado.hashtags, 0)
+
+    const notas = el('div', { class: 'notas' })
+    for (const [chave, nome] of Object.entries(NOMES_DAS_NOTAS)) {
+      const v = Number((c.notas || {})[chave] || 0)
+      notas.append(el('span', null, nome), el('span', { class: 'barra' }, el('i', { style: `width:${v}%` })), el('span', { class: 'valor' }, String(v)))
+    }
+    const comentar = el('button', { type: 'button', class: 'comentar', hidden: true }, 'Comentar')
+    const secao = el('section', { class: 'corte', id: `corte-${c.id}` }, [
+      el('figure', { class: 'previa' }, [
+        el('video', { src: `previas/${c.id}.mp4`, controls: true, preload: 'metadata', playsInline: true }),
+        el('figcaption', null, `${segundos(c.duracao)} · ${c.layout || 'auto'}${c.cortado ? ` · ${c.cortado}% de pausa cortada` : ''}`)
+      ]),
+      el('div', { class: 'ficha-do-corte' }, [
+        el('div', { class: 'cabeca' }, [
+          el('h2', null, `Corte ${c.id}`),
+          c.tipo_gancho ? el('span', { class: 'pilula' }, c.tipo_gancho.replace(/_/g, ' ')) : null,
+          el('span', { class: 'nota' }, [String(c.nota), el('small', null, '/100')])
+        ]),
+        notas,
+        c.porque ? el('p', { class: 'porque' }, c.porque) : null,
+        c.avisos && c.avisos.length ? el('ul', { class: 'avisos' }, c.avisos.map((a) => el('li', null, a))) : null,
+        el('div', { class: 'campos' }, [titulo.label, gancho.label, descricao.label, hashtags.label]),
+        c.texto ? el('details', null, [el('summary', null, 'Ler o que é dito'), el('p', null, c.texto)]) : null,
+        el('div', { class: 'acoes' }, [el('label', { class: 'aprovar', for: `aprovar-${c.id}` }, [caixa, 'Aprovar']), comentar, quem])
+      ])
+    ])
+
+    const desenhar = (nomes = {}) => {
+      caixa.checked = estado.aprovado
+      secao.classList.toggle('aprovado', estado.aprovado)
+      quem.textContent = estado.por ? `${estado.aprovado ? 'Aprovado' : 'Mexido'} por ${nomes[estado.por] || 'alguém'}${estado.em ? ` em ${hora(estado.em)}` : ''}` : ''
+    }
+    // O que a pessoa digitou e ainda não foi gravado não pode ser atropelado por uma leitura do banco.
+    const pendentes = new Set()
+    const salvar = () => {
+      if (!cap.db) return
+      const gravando = [...pendentes]
+      pendentes.clear()
+      estado.por = meuId
+      estado.em = new Date().toISOString()
+      const dados = { aprovado: estado.aprovado, titulo: estado.titulo, gancho: estado.gancho, descricao: estado.descricao, hashtags: estado.hashtags, por: estado.por, em: estado.em }
+      escrever(`cortes/${c.id}`, () => cap.db.doc(`cortes/${c.id}`).set(dados)).catch(() => {
+        gravando.forEach((k) => pendentes.add(k))
+        document.getElementById('situacao').textContent = 'Não consegui salvar a última mudança. Confira se você pode editar esta mesa e tente de novo.'
+      })
+      nomes([estado.por]).then(desenhar)
+      atualizarSituacao()
+    }
+    const salvarDepois = atraso(salvar, 700)
+    caixa.addEventListener('change', () => { estado.aprovado = caixa.checked; desenhar(); salvar() })
+    for (const [chave, campoX] of [['titulo', titulo], ['gancho', gancho], ['descricao', descricao], ['hashtags', hashtags]]) {
+      campoX.input.addEventListener('input', () => { estado[chave] = campoX.input.value; pendentes.add(chave); salvarDepois() })
+    }
+    comentar.addEventListener('click', () => { if (cap.comments) cap.comments.openComposer({ element: secao }).catch(() => {}) })
+
+    return {
+      c,
+      secao,
+      aprovado: () => estado.aprovado,
+      ativar () { caixa.disabled = false; if (cap.comments) comentar.hidden = false },
+      // Aplica o que veio do banco sem salvar de volta: só quem mexe na mesa grava, e com o próprio nome.
+      receber (doc, nomesConhecidos) {
+        if (!doc) return
+        for (const [chave, campoX] of [['titulo', titulo], ['gancho', gancho], ['descricao', descricao], ['hashtags', hashtags]]) {
+          if (pendentes.has(chave) || document.activeElement === campoX.input || doc[chave] == null) continue
+          estado[chave] = doc[chave]
+          if (campoX.input.value !== estado[chave]) { campoX.input.value = estado[chave]; campoX.atualizar() }
+        }
+        if (typeof doc.aprovado === 'boolean') estado.aprovado = doc.aprovado
+        estado.por = doc.por || null
+        estado.em = doc.em || null
+        desenhar(nomesConhecidos)
+      }
+    }
+  }
+
+  function atualizarSituacao () {
+    const s = document.getElementById('situacao')
+    const n = cartoes.filter((k) => k.aprovado()).length
+    s.classList.toggle('aprovada', n > 0)
+    s.textContent = !cap.db
+      ? 'Abrindo a mesa…'
+      : n === 0 ? 'Nenhum corte aprovado ainda.' : `${n} ${n === 1 ? 'corte aprovado' : 'cortes aprovados'}: ${cartoes.filter((k) => k.aprovado()).map((k) => k.c.id).join(', ')}.`
+  }
+
+  async function nomes (ids) {
+    const unicos = [...new Set(ids.filter(Boolean))]
+    if (!cap.user || unicos.length === 0) return {}
+    try {
+      const ps = await cap.user.profiles(unicos)
+      return Object.fromEntries(unicos.map((id) => [id, (ps[id] && ps[id].name) || 'Alguém']))
+    } catch { return {} }
+  }
+
+  ;(async () => {
+    const relogio = setTimeout(() => {
+      if (!cap.db) document.getElementById('situacao').textContent = 'A mesa abriu sem o banco: dá para assistir, mas a aprovação precisa ser feita na conversa.'
+    }, 10000)
+    const [db, user, comments] = await Promise.all([usar('db'), usar('user'), usar('comments')])
+    cap.db = db
+    cap.user = user
+    cap.comments = comments
+    if (!db) return
+    clearTimeout(relogio)
+    try { meuId = user ? await user.id() : null } catch {}
+    cartoes.forEach((k) => k.ativar())
+    atualizarSituacao()
+    db.collection('cortes').onSnapshot(async (snap) => {
+      const docs = {}
+      for (const d of snap.docs || []) docs[d.id] = d.data ? d.data() : d
+      const conhecidos = await nomes(Object.values(docs).map((d) => d && d.por))
+      cartoes.forEach((k) => k.receber(docs[String(k.c.id)], conhecidos))
+      atualizarSituacao()
+    }, () => {
+      document.getElementById('situacao').textContent = 'Não consegui ler as aprovações. Recarregue a página.'
+    })
+  })()
+})()
+</script>
