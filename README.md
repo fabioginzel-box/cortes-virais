@@ -12,6 +12,7 @@ identidade visual do seu canal.
 > page), and only approved clips are rendered in full. The skill, its prompts and its docs are in
 > Brazilian Portuguese; videos in other languages work (`--idioma en`), but filler-word removal is
 > tuned for Portuguese. Requires Node 22, ffmpeg, Chrome and a Replicate API token. MIT licensed.
+> Built at [Box24x7](https://www.box24x7.com/?utm_source=github&utm_medium=readme&utm_campaign=cortes-virais&utm_content=english), where it cuts the company's interviews and podcasts.
 
 ## O que ela faz
 
@@ -36,6 +37,20 @@ identidade visual do seu canal.
 9. **Aprende** com os números do YouTube Studio que você registra depois de publicar.
 
 A skill não publica nada: quem sobe os vídeos é você.
+
+## Quem usa
+
+<p align="center">
+  <img src="docs/vitrine-box24x7.gif" width="320" alt="Um corte da Box24x7 feito com a skill: o card do gancho, a legenda palavra a palavra, a tela dividida quando os dois falam e a tela final da marca">
+</p>
+
+A **[Box24x7](https://www.box24x7.com/?utm_source=github&utm_medium=readme&utm_campaign=cortes-virais&utm_content=vitrine)**, onde a skill nasceu, corta com ela as entrevistas e os podcasts de que
+participa. Acima, um corte da entrevista no Smart Money, feito pela versão interna que deu origem a esta: o card do gancho, a legenda palavra a palavra na
+identidade da Box, a tela dividida quando os dois falam e, no fim, a tela final da marca. Essa tela foi
+feita sob medida para a Box; com o modo `video` da finalização, qualquer canal põe a própria assinatura no
+mesmo lugar.
+
+Usa a skill no seu canal? Abra uma issue com o link de um corte, que ele entra aqui.
 
 ## Requisitos
 
@@ -184,6 +199,12 @@ cd skills/cortes-virais/scripts && node --test lib/*.test.js
 ```
 
 O GitHub Actions roda os mesmos testes no Mac, no Windows e no Linux a cada push.
+
+## Sobre
+
+A cortes-virais foi feita na **[Box24x7](https://www.box24x7.com/?utm_source=github&utm_medium=readme&utm_campaign=cortes-virais&utm_content=sobre)**, que aluga produtos de uso eventual, da furadeira
+ao videogame, com entrega em até 1 hora. É com ela que a Box corta as próprias entrevistas e podcasts, e
+o que funcionou lá virou as regras desta skill.
 
 ## Créditos e licença
 
