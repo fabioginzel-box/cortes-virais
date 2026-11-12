@@ -39,6 +39,10 @@ function acharChrome (env = process.env) {
 
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// No Windows, a primeira abertura do Chrome com o antivírus olhando passou de 15 s no CI; um computador
+// lento demora o mesmo. Um Chrome que não sobe de jeito nenhum falha antes, pelo erro do processo.
+const PRAZO_PARA_ABRIR = 60000
+
 // No Windows o Chrome ainda está escrevendo o arquivo quando ele aparece, e a leitura falha com EBUSY:
 // vale como "ainda não", e a próxima volta tenta de novo.
 function lerPorta (arquivo, ler = fs.readFileSync) {
@@ -94,13 +98,14 @@ async function abrir ({ tempoLimite = 60000 } = {}) {
   try {
     const arquivoPorta = path.join(perfil, 'DevToolsActivePort')
     let porta = null
-    for (let i = 0; i < 150 && !porta; i++) {
+    const limite = Date.now() + PRAZO_PARA_ABRIR
+    while (!porta && Date.now() < limite) {
       await esperar(100)
       if (falhou) throw new Error(`não consegui abrir o Chrome em ${chrome} (${falhou.code || falhou.message}): aponte o executável, e não a pasta do app, em CORTES_VIRAIS_CHROME`)
       if (processo.exitCode !== null) throw new Error(`o Chrome saiu antes de abrir a porta de depuração (código ${processo.exitCode})`)
       porta = lerPorta(arquivoPorta)
     }
-    if (!porta) throw new Error('o Chrome não abriu a porta de depuração em 15 s')
+    if (!porta) throw new Error(`o Chrome não abriu a porta de depuração em ${PRAZO_PARA_ABRIR / 1000} s`)
 
     const alvo = await (await fetch(`http://127.0.0.1:${porta}/json/new?about:blank`, { method: 'PUT' })).json()
     const ws = new WebSocket(alvo.webSocketDebuggerUrl)
