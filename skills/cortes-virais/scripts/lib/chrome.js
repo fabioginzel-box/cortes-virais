@@ -39,6 +39,18 @@ function acharChrome (env = process.env) {
 
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// No Windows o Chrome ainda está escrevendo o arquivo quando ele aparece, e a leitura falha com EBUSY:
+// vale como "ainda não", e a próxima volta tenta de novo.
+function lerPorta (arquivo, ler = fs.readFileSync) {
+  try {
+    const primeira = String(ler(arquivo, 'utf8')).split('\n')[0].trim()
+    return primeira ? Number(primeira) : null
+  } catch (e) {
+    if (['ENOENT', 'EBUSY', 'EPERM', 'EACCES'].includes(e.code)) return null
+    throw e
+  }
+}
+
 async function abrir ({ tempoLimite = 60000 } = {}) {
   if (typeof WebSocket === 'undefined') {
     throw new Error(`este Node não tem WebSocket global (precisa de Node 22+; este é ${process.version}).`)
@@ -86,10 +98,7 @@ async function abrir ({ tempoLimite = 60000 } = {}) {
       await esperar(100)
       if (falhou) throw new Error(`não consegui abrir o Chrome em ${chrome} (${falhou.code || falhou.message}): aponte o executável, e não a pasta do app, em CORTES_VIRAIS_CHROME`)
       if (processo.exitCode !== null) throw new Error(`o Chrome saiu antes de abrir a porta de depuração (código ${processo.exitCode})`)
-      if (fs.existsSync(arquivoPorta)) {
-        const primeira = fs.readFileSync(arquivoPorta, 'utf8').split('\n')[0]
-        if (primeira) porta = Number(primeira)
-      }
+      porta = lerPorta(arquivoPorta)
     }
     if (!porta) throw new Error('o Chrome não abriu a porta de depuração em 15 s')
 
@@ -169,4 +178,4 @@ async function abrir ({ tempoLimite = 60000 } = {}) {
   }
 }
 
-module.exports = { abrir, acharChrome, candidatos }
+module.exports = { abrir, acharChrome, candidatos, lerPorta }

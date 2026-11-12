@@ -33,6 +33,17 @@ const plano = { nome: 'teste', duracaoFonte: 600, cortes: [{ id: 1, titulo: 'Tí
 const daAna = (extra) => JSON.stringify({ aprovado: false, titulo: 'Título do plano', gancho: 'Gancho do plano', descricao: 'desc', hashtags: '#a', por: 'ana', em: '2026-11-10T10:00:00.000Z', ...extra })
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// O salvamento do texto espera a pessoa parar de digitar, e num CI lento os timers da página atrasam:
+// espera as gravações chegarem, com prazo, em vez de um tempo fixo.
+async function gravacoes (quantas, prazo = 8000) {
+  const inicio = Date.now()
+  for (;;) {
+    const lista = await pagina.avaliar('window.gravados')
+    if (lista.length >= quantas || Date.now() - inicio > prazo) return lista
+    await esperar(100)
+  }
+}
+
 let pagina
 let endereco
 
@@ -71,9 +82,8 @@ test('a mesa não troca o que se acabou de digitar por uma leitura velha', opcoe
   await abrirMesa()
   await pagina.avaliar(`(() => { const t = document.getElementById('titulo-1'); t.focus(); t.value = 'Título novo'; t.dispatchEvent(new Event('input')); document.getElementById('gancho-1').focus() })()`)
   await pagina.avaliar(`window.ler(${daAna()})`)
-  await esperar(1000)
-  const gravados = await pagina.avaliar('window.gravados')
-  assert.deepEqual([await pagina.avaliar(`document.getElementById('titulo-1').value`), gravados[gravados.length - 1].titulo], ['Título novo', 'Título novo'])
+  const gravados = await gravacoes(1)
+  assert.deepEqual([await pagina.avaliar(`document.getElementById('titulo-1').value`), gravados.length && gravados[gravados.length - 1].titulo], ['Título novo', 'Título novo'])
 })
 
 test('a mesa não desmarca a aprovação por uma leitura feita antes da gravação', opcoes, async () => {
@@ -90,8 +100,7 @@ test('a mesa não grava a aprovação desfeita por uma leitura velha na próxima
   await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
   await pagina.avaliar(`window.ler(${daAna()})`)
   await pagina.avaliar(`(() => { const d = document.getElementById('descricao-1'); d.focus(); d.value = 'desc nova'; d.dispatchEvent(new Event('input')); d.blur() })()`)
-  await esperar(1600)
-  assert.deepEqual((await pagina.avaliar('window.gravados')).map((g) => g.aprovado), [true, true])
+  assert.deepEqual((await gravacoes(2)).map((g) => g.aprovado), [true, true])
 })
 
 test('a mesa ignora a leitura anterior à última gravação daqui', opcoes, async () => {
@@ -105,6 +114,6 @@ test('a mesa ignora a leitura anterior à última gravação daqui', opcoes, asy
 test('a mesa grava a aprovação com o nome de quem marcou', opcoes, async () => {
   await abrirMesa()
   await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
-  const [gravado] = await pagina.avaliar('window.gravados')
+  const [gravado = {}] = await gravacoes(1)
   assert.deepEqual([gravado.aprovado, gravado.por], [true, 'eu'])
 })
