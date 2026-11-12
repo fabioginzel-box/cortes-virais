@@ -5,7 +5,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { linhaDoCorte, registrar, ler, resumo, faixaDeDuracao, acertoDaNota } = require('./historico')
+const { lerNumero, linhaDoCorte, registrar, ler, resumo, faixaDeDuracao, acertoDaNota } = require('./historico')
 
 const corte = { id: 3, titulo: 'T', tipo_gancho: 'contrario', duracao: 42, nota: 78, notas: {} }
 const linha = (tipo, duracao, nota, retencao, visualizacoes = 1000) => ({ tipo_gancho: tipo, duracao, nota, metricas: { retencao, visualizacoes } })
@@ -66,4 +66,28 @@ test('acertoDaNota sem variação nas notas não tem resposta', () => {
 
 test('acertoDaNota dá 1 quando a ordem das notas é a da retenção', () => {
   assert.equal(acertoDaNota([linhaCom(60, 30), linhaCom(70, 40), linhaCom(80, 50), linhaCom(90, 60), linhaCom(95, 70)]), 1)
+})
+
+test('lerNumero tira o ponto de milhar do YouTube Studio', () => {
+  assert.equal(lerNumero('12.000', 'visualizacoes'), 12000)
+})
+
+test('lerNumero lê a vírgula decimal', () => {
+  assert.equal(lerNumero('74,5', 'retencao'), 74.5)
+})
+
+test('lerNumero lê o número com milhar e decimal', () => {
+  assert.equal(lerNumero('1.234,5', 'visualizacoes'), 1234.5)
+})
+
+test('lerNumero aceita o ponto decimal', () => {
+  assert.equal(lerNumero('74.5', 'retencao'), 74.5)
+})
+
+test('lerNumero tira o sinal de porcentagem', () => {
+  assert.equal(lerNumero('68%', 'continuaram'), 68)
+})
+
+test('lerNumero recusa o que não é número', () => {
+  assert.throws(() => lerNumero('muito', 'visualizacoes'), /--visualizacoes "muito" não é um número/)
 })

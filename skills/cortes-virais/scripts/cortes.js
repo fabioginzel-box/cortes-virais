@@ -177,8 +177,9 @@ async function comandoMarca (nome, o) {
   console.log(`canal ${atual.nome} (${path.join(dir, 'marca.json')}), com o estilo ${atual.marca.estilo} já aplicado:`)
   console.log(JSON.stringify(semDir, null, 2))
   for (const p of atual.problemas) console.log(`PROBLEMA ${p}`)
+  if (atual.problemas.length) return 1
   for (const a of marca.avisos(atual.marca)) console.log(`aviso: ${a}`)
-  return atual.problemas.length ? 1 : 0
+  return 0
 }
 
 const EXTENSOES_DE_IMAGEM = ['.png', '.jpg', '.jpeg', '.webp']
@@ -515,7 +516,12 @@ async function previa (pasta, o) {
 function abrirNoNavegador (url) {
   const { comandoParaAbrir } = require('./lib/mesa-local')
   const [comando, args] = comandoParaAbrir(url)
-  try { spawn(comando, args, { detached: true, stdio: 'ignore', windowsHide: true }).unref() } catch {}
+  const aviso = () => console.log(`não consegui abrir o navegador sozinho (${comando}): abra ${url}`)
+  try {
+    const filho = spawn(comando, args, { detached: true, stdio: 'ignore', windowsHide: true })
+    filho.once('error', aviso)
+    filho.unref()
+  } catch { aviso() }
 }
 
 async function mesa (pasta, o) {
@@ -557,9 +563,12 @@ async function mesa (pasta, o) {
   return 0
 }
 
+// O documento pode vir solto ou dentro de "data", conforme quem gravou (a mesa local ou o banco do artefato).
+const semEnvelope = (doc) => (doc && typeof doc === 'object' && !('aprovado' in doc) && doc.data && typeof doc.data === 'object' ? doc.data : doc)
+
 function lerColecao (pasta) {
   if (!fs.existsSync(pasta)) return {}
-  return Object.fromEntries(fs.readdirSync(pasta).filter((a) => a.endsWith('.json')).map((a) => [a.slice(0, -5), lerJson(path.join(pasta, a))]))
+  return Object.fromEntries(fs.readdirSync(pasta).filter((a) => a.endsWith('.json')).map((a) => [a.slice(0, -5), semEnvelope(lerJson(path.join(pasta, a)))]))
 }
 
 function aprovar (pasta, o) {

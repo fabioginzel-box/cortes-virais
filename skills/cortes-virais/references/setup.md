@@ -23,7 +23,8 @@ guarda no terminal dela.
 | yt-dlp | só para baixar do YouTube | `brew install yt-dlp` | `winget install --id yt-dlp.yt-dlp -e` | `pipx install yt-dlp` |
 
 Em outro caminho, aponte o programa: `CORTES_VIRAIS_CHROME`, `CORTES_VIRAIS_FFMPEG`,
-`CORTES_VIRAIS_FFPROBE`, `CORTES_VIRAIS_YT_DLP`.
+`CORTES_VIRAIS_FFPROBE`, `CORTES_VIRAIS_YT_DLP`. No Mac, o Chrome é o executável de dentro do app
+(`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`), e não a pasta `.app`.
 
 O YouTube exige que o yt-dlp resolva um desafio em JavaScript: a skill passa a ele o próprio Node, então
 não é preciso instalar o Deno.

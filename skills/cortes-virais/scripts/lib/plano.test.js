@@ -229,3 +229,10 @@ test('conferirCortes aponta destaques que não são lista de frases', () => {
   const r = conferirCortes({ cortes: [{ id: 1, titulo: 'T', gancho: 'G', trechos: [{ inicio: 4, fim: 35 }], notas, destaques: 'R$ 900' }] }, longas())
   assert.match(r.problemas[0].problemas.join(), /destaques/)
 })
+
+test('conferirCortes não deixa o fim do corte passar do fim do vídeo', () => {
+  const lista = longas()
+  const duracaoFonte = lista[lista.length - 1].e + 0.1
+  const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 30, fim: duracaoFonte }] })] }, lista, { duracaoFonte })
+  assert.ok(r.cortes[0].trechos[0].fim <= duracaoFonte - 0.05)
+})

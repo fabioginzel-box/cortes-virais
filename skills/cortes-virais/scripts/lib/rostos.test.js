@@ -142,3 +142,16 @@ test('descrever conta as trocas e as reações', () => {
   const enq = { layout: 'falantes', trocasDeCamera: 3, planos: [{ tipo: 'rosto' }, { tipo: 'dividido' }, { tipo: 'rosto' }] }
   assert.equal(descrever(enq), 'segue quem fala, 2 trocas, tela dividida em 1 reação; a fonte troca de câmera 3 vezes')
 })
+
+test('planos com uma pessoa só e pausas cortadas diz que segue o rosto', () => {
+  const quadros = Array.from({ length: 100 }, (_, k) => ({ t: k * 0.2, faces: [rosto(0.5, k % 2 ? 0.6 : 0.1)] }))
+  const r = planos({ quadros, palavrasEditadas: falasDe(() => 'S1', 16), mantidos: [[0, 6], [7, 12], [13, 18]], info })
+  assert.equal(r.layout, 'rosto')
+})
+
+test('planos dá ao pedaço curto sem quadro o rosto do vizinho, e não o do começo do corte', () => {
+  const quem = (t) => (t < 5 ? 'S1' : 'S2')
+  const r = planos({ quadros: conversa(quem), palavrasEditadas: falasDe(quem, 18), mantidos: [[0, 9.9], [10.05, 10.15], [12, 20]], info })
+  const plano = r.planos.find((p) => p.de <= 9.95 && p.ate > 9.95)
+  assert.equal(plano.x < 960 ? 'esquerda' : 'direita', 'direita')
+})

@@ -17,6 +17,7 @@ const MODOS = {
 }
 
 const LIMITES = { min: 15, max: 90, faixaMin: 25, faixaMax: 60, idealMin: 30, idealMax: 45 }
+const FOLGA_DO_FIM_DO_VIDEO = 0.05
 const INICIO_FRACO = /^(e|mas|então|aí|daí|porque|pois|isso|ele|ela|eles|elas|esse|essa|esses|essas|aquilo|aquele|aquela|também|como eu (te )?(disse|falei)|igual eu falei)(?![\p{L}\p{N}])/iu
 
 // O ponto de corte nunca cai num vício: ele é tratado como pausa.
@@ -280,7 +281,10 @@ function conferirCortes (doc, palavras, { duracaoFonte = null, modo = 'dinamico'
       const b = lerTempo(t.fim)
       const ini = pontoDeInicio(a, palavras)
       const fim = pontoDeFim(b, palavras)
-      return { inicio: ini.corte, fim: Math.max(fim.corte, ini.corte + 0.5), pedido: { inicio: a, fim: b }, ajuste: { inicio: ini.deslocamento, fim: fim.deslocamento } }
+      // A folga depois da última palavra não pode passar do fim do vídeo: lá não há quadro para recortar.
+      const ultimo = duracaoFonte ? arred(duracaoFonte - FOLGA_DO_FIM_DO_VIDEO) : Infinity
+      const corte = Math.min(ultimo, Math.max(fim.corte, ini.corte + 0.5))
+      return { inicio: ini.corte, fim: corte, pedido: { inicio: a, fim: b }, ajuste: { inicio: ini.deslocamento, fim: arred(corte - b) } }
     })
     const lista = trechos.flatMap((t) => mantidos(t.inicio, t.fim, palavras, modo))
     const duracao = arred(cobertura(lista), 2)

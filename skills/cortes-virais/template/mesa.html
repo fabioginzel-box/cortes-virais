@@ -201,26 +201,29 @@
       secao.classList.toggle('aprovado', estado.aprovado)
       quem.textContent = estado.por ? `${estado.aprovado ? 'Aprovado' : 'Mexido'} por ${nomes[estado.por] || 'alguém'}${estado.em ? ` em ${hora(estado.em)}` : ''}` : ''
     }
-    // O que a pessoa digitou e ainda não foi gravado não pode ser atropelado por uma leitura do banco.
-    const pendentes = new Set()
+    // O que a pessoa mexeu só sai de "pendente" quando a gravação daquela versão termina: até lá, nenhuma
+    // leitura do banco atropela o campo nem a aprovação.
+    const pendentes = new Map()
+    let versao = 0
+    const marcar = (chave) => pendentes.set(chave, ++versao)
     const salvar = () => {
       if (!cap.db) return
-      const gravando = [...pendentes]
-      pendentes.clear()
+      const gravando = new Map(pendentes)
       estado.por = meuId
       estado.em = new Date().toISOString()
       const dados = { aprovado: estado.aprovado, titulo: estado.titulo, gancho: estado.gancho, descricao: estado.descricao, hashtags: estado.hashtags, por: estado.por, em: estado.em }
-      escrever(`cortes/${c.id}`, () => cap.db.doc(`cortes/${c.id}`).set(dados)).catch(() => {
-        gravando.forEach((k) => pendentes.add(k))
+      escrever(`cortes/${c.id}`, () => cap.db.doc(`cortes/${c.id}`).set(dados)).then(() => {
+        for (const [k, v] of gravando) if (pendentes.get(k) === v) pendentes.delete(k)
+      }, () => {
         document.getElementById('situacao').textContent = 'Não consegui salvar a última mudança. Confira se você pode editar esta mesa e tente de novo.'
       })
       nomes([estado.por]).then(desenhar)
       atualizarSituacao()
     }
     const salvarDepois = atraso(salvar, 700)
-    caixa.addEventListener('change', () => { estado.aprovado = caixa.checked; desenhar(); salvar() })
+    caixa.addEventListener('change', () => { estado.aprovado = caixa.checked; marcar('aprovado'); desenhar(); salvar() })
     for (const [chave, campoX] of [['titulo', titulo], ['gancho', gancho], ['descricao', descricao], ['hashtags', hashtags]]) {
-      campoX.input.addEventListener('input', () => { estado[chave] = campoX.input.value; pendentes.add(chave); salvarDepois() })
+      campoX.input.addEventListener('input', () => { estado[chave] = campoX.input.value; marcar(chave); salvarDepois() })
     }
     comentar.addEventListener('click', () => { if (cap.comments) cap.comments.openComposer({ element: secao }).catch(() => {}) })
 
@@ -232,14 +235,15 @@
       // Aplica o que veio do banco sem salvar de volta: só quem mexe na mesa grava, e com o próprio nome.
       receber (doc, nomesConhecidos) {
         if (!doc) return
+        // Leitura feita antes da última gravação daqui chega atrasada e traz o estado velho.
+        if (estado.em && doc.em && doc.em < estado.em) return
         for (const [chave, campoX] of [['titulo', titulo], ['gancho', gancho], ['descricao', descricao], ['hashtags', hashtags]]) {
           if (pendentes.has(chave) || document.activeElement === campoX.input || doc[chave] == null) continue
           estado[chave] = doc[chave]
           if (campoX.input.value !== estado[chave]) { campoX.input.value = estado[chave]; campoX.atualizar() }
         }
-        if (typeof doc.aprovado === 'boolean') estado.aprovado = doc.aprovado
-        estado.por = doc.por || null
-        estado.em = doc.em || null
+        if (!pendentes.has('aprovado') && typeof doc.aprovado === 'boolean') estado.aprovado = doc.aprovado
+        if (!pendentes.size) { estado.por = doc.por || null; estado.em = doc.em || null }
         desenhar(nomesConhecidos)
       }
     }

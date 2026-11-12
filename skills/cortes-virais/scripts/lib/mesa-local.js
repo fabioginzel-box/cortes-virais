@@ -54,8 +54,14 @@ function lerCorpo (req) {
   })
 }
 
+// Só atende quem chamou pelo endereço local: um site de fora que aponte o próprio domínio para
+// 127.0.0.1 (DNS rebinding) manda outro Host e fica de fora.
+const HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]'])
+const hostLocal = (host) => HOSTS.has(String(host || '').replace(/:\d+$/, '').toLowerCase())
+
 function criarServidor ({ pastaDaMesa, pastaDaColecao }) {
   return http.createServer(async (req, res) => {
+    if (!hostLocal(req.headers.host)) { res.writeHead(403).end(); return }
     try {
       const url = new URL(req.url, 'http://127.0.0.1')
       const caminho = decodeURIComponent(url.pathname)
@@ -103,4 +109,4 @@ function comandoParaAbrir (url, plataforma = process.platform) {
   return ['xdg-open', [url]]
 }
 
-module.exports = { abrirMesaLocal, criarServidor, lerColecao, gravarDoc, comandoParaAbrir }
+module.exports = { abrirMesaLocal, criarServidor, hostLocal, lerColecao, gravarDoc, comandoParaAbrir }

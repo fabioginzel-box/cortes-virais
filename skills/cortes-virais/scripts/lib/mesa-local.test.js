@@ -5,7 +5,8 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { abrirMesaLocal, lerColecao, comandoParaAbrir } = require('./mesa-local')
+const http = require('node:http')
+const { abrirMesaLocal, lerColecao, comandoParaAbrir, hostLocal } = require('./mesa-local')
 
 function montar () {
   const base = fs.mkdtempSync(path.join(os.tmpdir(), 'mesa-local-'))
@@ -84,4 +85,29 @@ test('comandoParaAbrir usa o start no Windows', () => {
 
 test('comandoParaAbrir usa o xdg-open no Linux', () => {
   assert.deepEqual(comandoParaAbrir('http://x', 'linux'), ['xdg-open', ['http://x']])
+})
+
+function pedirComHost (url, host) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(url)
+    http.get({ hostname: u.hostname, port: u.port, path: '/api/cortes', headers: { Host: host } }, (r) => { r.resume(); resolve(r.statusCode) }).on('error', reject)
+  })
+}
+
+test('a mesa local recusa pedido com o Host de outro site', async () => {
+  await comMesa(async (mesa) => {
+    assert.equal(await pedirComHost(mesa.url, 'evil.example'), 403)
+  })
+})
+
+test('hostLocal aceita o 127.0.0.1 com a porta', () => {
+  assert.equal(hostLocal('127.0.0.1:53327'), true)
+})
+
+test('hostLocal aceita o localhost', () => {
+  assert.equal(hostLocal('localhost:8080'), true)
+})
+
+test('hostLocal recusa outro domínio', () => {
+  assert.equal(hostLocal('evil.example:53327'), false)
 })

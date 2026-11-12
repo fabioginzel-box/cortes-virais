@@ -8,9 +8,22 @@ const path = require('node:path')
 
 const temporario = (alvo) => path.join(path.dirname(alvo), `.parcial-${path.basename(alvo)}`)
 
+const esperarSincrono = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms)
+
+// No Windows, antivírus e indexador seguram por um instante o arquivo recém-escrito, e o rename falha
+// com EPERM ou EBUSY: tentar de novo resolve.
+function renomear (de, para, { tentativas = 10, pausa = 200, mover = fs.renameSync } = {}) {
+  for (let k = 0; ; k++) {
+    try { return mover(de, para) } catch (e) {
+      if (k >= tentativas || !['EPERM', 'EBUSY', 'EACCES'].includes(e.code)) throw e
+      esperarSincrono(pausa)
+    }
+  }
+}
+
 function concluir (tmp, alvo) {
   if (!fs.existsSync(tmp)) throw new Error(`não gerou ${path.basename(alvo)}`)
-  fs.renameSync(tmp, alvo)
+  renomear(tmp, alvo)
   return alvo
 }
 
@@ -30,4 +43,4 @@ function identidade (arquivo) {
   return [path.resolve(arquivo), s.size, Math.round(s.mtimeMs)]
 }
 
-module.exports = { gerar, temporario, identidade }
+module.exports = { gerar, temporario, identidade, renomear }

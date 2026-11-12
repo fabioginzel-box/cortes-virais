@@ -28,7 +28,7 @@ function candidatos (env = process.env) {
 
 function acharChrome (env = process.env) {
   for (const c of candidatos(env)) {
-    try { if (fs.existsSync(c)) return c } catch {}
+    try { if (fs.statSync(c).isFile()) return c } catch {}
   }
   try {
     return execFileSync('which', ['google-chrome'], { encoding: 'utf8', windowsHide: true }).trim() || null
@@ -60,7 +60,9 @@ async function abrir ({ tempoLimite = 60000 } = {}) {
     'about:blank'
   ], { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true })
   processo.stderr.on('data', () => {})
-  const saiu = new Promise((resolve) => processo.once('exit', resolve))
+  let falhou = null
+  processo.once('error', (e) => { falhou = e })
+  const saiu = new Promise((resolve) => { processo.once('exit', resolve); processo.once('error', resolve) })
 
   // O perfil só se apaga depois que o Chrome sai: até lá ele ainda grava nele, e no Windows o arquivo
   // aberto trava a remoção.
@@ -82,6 +84,7 @@ async function abrir ({ tempoLimite = 60000 } = {}) {
     let porta = null
     for (let i = 0; i < 150 && !porta; i++) {
       await esperar(100)
+      if (falhou) throw new Error(`não consegui abrir o Chrome em ${chrome} (${falhou.code || falhou.message}): aponte o executável, e não a pasta do app, em CORTES_VIRAIS_CHROME`)
       if (processo.exitCode !== null) throw new Error(`o Chrome saiu antes de abrir a porta de depuração (código ${processo.exitCode})`)
       if (fs.existsSync(arquivoPorta)) {
         const primeira = fs.readFileSync(arquivoPorta, 'utf8').split('\n')[0]

@@ -9,11 +9,20 @@ const { mediana } = require('./numeros')
 
 const METRICAS = ['visualizacoes', 'retencao', 'continuaram', 'curtidas', 'inscritos']
 
+// O YouTube Studio em português mostra "12.000" e "74,5": o ponto de milhar sai e a vírgula vira ponto.
+function lerNumero (valor, nome) {
+  const texto = String(valor).trim().replace(/%$/, '').replace(/\s/g, '')
+  const normal = texto.includes(',') ? texto.replace(/\./g, '').replace(',', '.') : /^\d{1,3}(\.\d{3})+$/.test(texto) ? texto.replace(/\./g, '') : texto
+  const n = Number(normal)
+  if (normal === '' || !Number.isFinite(n)) throw new Error(`--${nome} "${valor}" não é um número`)
+  return n
+}
+
 function linhaDoCorte (corte, pasta, metricas, agora = new Date()) {
   const faltando = ['visualizacoes', 'retencao'].filter((m) => metricas[m] == null)
   if (faltando.length) throw new Error(`faltam ${faltando.join(' e ')}: tire do YouTube Studio, na aba Alcance e Engajamento do Short`)
   const nums = {}
-  for (const m of METRICAS) if (metricas[m] != null) nums[m] = Number(metricas[m])
+  for (const m of METRICAS) if (metricas[m] != null) nums[m] = lerNumero(metricas[m], m)
   return {
     registrado_em: agora.toISOString(),
     pasta: path.basename(pasta),
@@ -99,4 +108,4 @@ function resumo (linhas) {
   }
 }
 
-module.exports = { linhaDoCorte, registrar, ler, resumo, faixaDeDuracao, acertoDaNota }
+module.exports = { lerNumero, linhaDoCorte, registrar, ler, resumo, faixaDeDuracao, acertoDaNota }

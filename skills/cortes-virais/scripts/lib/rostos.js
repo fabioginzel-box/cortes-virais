@@ -172,6 +172,15 @@ function rostoFixo (quadros, principal) {
   return perto && perto.d < 0.15 ? perto.tr : rostoDoPedaco(quadros)
 }
 
+// O pedaço curto que caiu entre dois quadros analisados fica com o plano do vizinho mais perto, o de
+// antes primeiro: herdar o do começo do corte mostraria outra pessoa por um instante.
+function maisPerto (pedacos, k) {
+  for (let d = 1; d < pedacos.length; d++) {
+    for (const v of [pedacos[k - d], pedacos[k + d]]) if (v && !v.herda) return v
+  }
+  return null
+}
+
 function fronteiras (lt, cortesDeCena, extras) {
   const marcos = new Set([0, lt.duracao])
   lt.blocos.forEach((b) => { if (b.de > 0) marcos.add(Number(b.de.toFixed(3))) })
@@ -204,7 +213,7 @@ function planos ({ quadros, palavrasEditadas, mantidos, info, layout = 'auto', c
   }
   pedacos.forEach((p, k) => {
     if (!p.herda) return
-    const vizinho = [pedacos[k - 1], pedacos[k + 1]].find((v) => v && !v.herda && v.tomada === p.tomada) || pedacos.find((v) => !v.herda)
+    const vizinho = [pedacos[k - 1], pedacos[k + 1]].find((v) => v && !v.herda && v.tomada === p.tomada) || maisPerto(pedacos, k)
     Object.assign(p, vizinho ? { tipo: vizinho.tipo, pontos: vizinho.pontos, cx: vizinho.cx, h: vizinho.h } : { tipo: 'tela' })
   })
 
@@ -243,7 +252,8 @@ function planos ({ quadros, palavrasEditadas, mantidos, info, layout = 'auto', c
     return { ...intervalo, tipo: 'rosto', ...recorte, ...(xs ? { xs } : {}) }
   })
   const rostos = new Set(saida.filter((p) => p.tipo === 'rosto').map((p) => Math.round((p.x + p.w / 2) / (0.15 * info.largura))))
-  const tipo = saida.every((p) => p.tipo === 'tela') ? 'tela' : saida.every((p) => p.tipo === 'dividido') ? 'dividido' : rostos.size > 1 || tomadas.length > 2 ? 'falantes' : 'rosto'
+  // Emenda de pausa cortada não é troca de pessoa: só rostos em lugares diferentes fazem o "falantes".
+  const tipo = saida.every((p) => p.tipo === 'tela') ? 'tela' : saida.every((p) => p.tipo === 'dividido') ? 'dividido' : layout !== 'rosto' && rostos.size > 1 ? 'falantes' : 'rosto'
   return { layout: tipo, trocasDeCamera, planos: saida }
 }
 

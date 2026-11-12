@@ -5,7 +5,7 @@ const assert = require('node:assert/strict')
 const fs = require('node:fs')
 const os = require('node:os')
 const path = require('node:path')
-const { gerar, temporario, identidade } = require('./arquivo')
+const { gerar, temporario, identidade, renomear } = require('./arquivo')
 
 const pasta = () => fs.mkdtempSync(path.join(os.tmpdir(), 'arquivo-'))
 
@@ -53,4 +53,16 @@ test('identidade muda quando o arquivo muda de tamanho', () => {
   const antes = JSON.stringify(identidade(a))
   fs.writeFileSync(a, 'xy')
   assert.notEqual(JSON.stringify(identidade(a)), antes)
+})
+
+test('renomear tenta de novo quando o Windows segura o arquivo', () => {
+  let vezes = 0
+  renomear('a', 'b', { pausa: 1, mover: () => { if (++vezes < 3) { const e = new Error('ocupado'); e.code = 'EBUSY'; throw e } } })
+  assert.equal(vezes, 3)
+})
+
+test('renomear não insiste em erro que não é de arquivo ocupado', () => {
+  let vezes = 0
+  assert.throws(() => renomear('a', 'b', { pausa: 1, mover: () => { vezes++; const e = new Error('sumiu'); e.code = 'ENOENT'; throw e } }), /sumiu/)
+  assert.equal(vezes, 1)
 })
