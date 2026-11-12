@@ -10,7 +10,7 @@ const { listaDoConcat } = require('./legendas')
 
 const TEMPLATE = path.join(__dirname, '..', '..', 'template', 'legenda.html')
 
-async function desenharEstados (lista, pasta, { gancho, fps = 30, tema }) {
+async function desenharEstados (lista, pasta, { gancho, fps = 30, tema, versao = 99 }) {
   if (!tema) throw new Error('desenharEstados precisa do tema da marca')
   fs.mkdirSync(pasta, { recursive: true })
   const pagina = await abrir({ tempoLimite: 60000 })
@@ -32,7 +32,7 @@ async function desenharEstados (lista, pasta, { gancho, fps = 30, tema }) {
       arquivos.push(porChave.get(e.chave))
     }
     const arquivoDaLista = path.join(pasta, 'lista.txt')
-    fs.writeFileSync(arquivoDaLista, listaDoConcat(lista, arquivos, fps))
+    fs.writeFileSync(arquivoDaLista, listaDoConcat(lista, arquivos, fps, { versao }))
     return { lista: arquivoDaLista, desenhos: porChave.size }
   } finally {
     await pagina.fechar()

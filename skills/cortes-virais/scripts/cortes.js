@@ -120,6 +120,11 @@ function ambiente () {
     [token, 'token do Replicate', motivo.replace(/\n/g, '\n      ')]
   ]
   for (const [ok, rotulo, dica] of linhas) console.log(`${ok ? 'ok   ' : 'FALTA'} ${rotulo}${ok ? '' : ` — ${dica}`}`)
+  if (ffmpeg) {
+    const { FFMPEG_COM_OPTION } = require('./lib/legendas')
+    const versao = lerVersao(rodar(ffmpeg, ['-version'], { saida: true }).split('\n')[0])
+    if (versao < FFMPEG_COM_OPTION) console.log(`aviso ffmpeg ${versao}: funciona, mas a legenda pode trocar até um quadro fora da hora; o ${FFMPEG_COM_OPTION} ou mais novo acerta o quadro (${INSTALAR.ffmpeg})`)
+  }
   console.log(`${ytdlp ? 'ok   ' : 'opcional'} yt-dlp: ${ytdlp || `não achei (só para baixar do YouTube: ${INSTALAR.ytdlp})`}`)
   console.log(`${google.chave() ? 'ok   ' : 'opcional'} GEMINI_API_KEY: ${google.chave() ? `o ${google.modelo()} assiste pela Gemini API` : 'sem ela, o Gemini assiste pelo Replicate'}`)
   const lista = canais.listarCanais()
@@ -471,7 +476,7 @@ async function renderizar (pasta, c, video, { previa, realce, destino, comFinali
   const dirLegenda = path.join(trabalho, `legenda-${hashDe([telas.map((e) => e.chave + e.quadros), c.gancho, fs.readFileSync(TEMPLATE, 'utf8'), marca.impressao(m)])}`)
   const overlay = path.join(dirLegenda, 'overlay.mov')
   if (!fs.existsSync(overlay)) {
-    const { lista: arquivoDaLista } = await desenharEstados(telas, dirLegenda, { gancho: c.gancho, fps, tema: marca.temaDaLegenda(m) })
+    const { lista: arquivoDaLista } = await desenharEstados(telas, dirLegenda, { gancho: c.gancho, fps, tema: marca.temaDaLegenda(m), versao })
     gerar(overlay, (tmp) => rodar(ffmpeg, render.argsOverlay(arquivoDaLista, fps, tmp)))
   }
 

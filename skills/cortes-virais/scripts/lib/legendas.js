@@ -99,9 +99,13 @@ function estados (listaDeBlocos, { duracao, fps = 30, gancho = PADRAO.gancho } =
 }
 
 // O último arquivo se repete no fim, senão o concat ignora a duração dele. Barra para a frente: o ffmpeg
-// do Windows aceita, e a contrabarra seria escape. Sem o framerate, o PNG entra na base de 1/25 s.
-function listaDoConcat (lista, arquivos, fps = 30) {
-  const caminho = (a) => `file '${a.replace(/\\/g, '/').replace(/'/g, "'\\''")}'\noption framerate ${fps}`
+// do Windows aceita, e a contrabarra seria escape. Sem o framerate, o PNG entra na base de 1/25 s; a
+// diretiva `option` não existe no ffmpeg antigo, que fica com até um quadro de imprecisão.
+const FFMPEG_COM_OPTION = 6
+
+function listaDoConcat (lista, arquivos, fps = 30, { versao = 99 } = {}) {
+  const opcao = versao >= FFMPEG_COM_OPTION ? `\noption framerate ${fps}` : ''
+  const caminho = (a) => `file '${a.replace(/\\/g, '/').replace(/'/g, "'\\''")}'${opcao}`
   const linhas = []
   lista.forEach((e, k) => {
     linhas.push(caminho(arquivos[k]))
@@ -111,4 +115,4 @@ function listaDoConcat (lista, arquivos, fps = 30) {
   return linhas.join('\n') + '\n'
 }
 
-module.exports = { blocos, estados, listaDoConcat, textoDaLegenda, trechosDasFrases }
+module.exports = { FFMPEG_COM_OPTION, blocos, estados, listaDoConcat, textoDaLegenda, trechosDasFrases }

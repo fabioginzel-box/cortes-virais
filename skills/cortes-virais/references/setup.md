@@ -26,6 +26,9 @@ Em outro caminho, aponte o programa: `CORTES_VIRAIS_CHROME`, `CORTES_VIRAIS_FFMP
 `CORTES_VIRAIS_FFPROBE`, `CORTES_VIRAIS_YT_DLP`. No Mac, o Chrome é o executável de dentro do app
 (`/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`), e não a pasta `.app`.
 
+Prefira o **ffmpeg 6 ou mais novo**. O 4 e o 5 (o `apt` do Ubuntu 22.04 traz o 4.4) funcionam, mas
+a legenda pode trocar até um quadro fora da hora; o `ambiente` avisa.
+
 O YouTube exige que o yt-dlp resolva um desafio em JavaScript: a skill passa a ele o próprio Node, então
 não é preciso instalar o Deno.
 

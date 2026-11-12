@@ -136,3 +136,13 @@ test('o overlay da legenda segura cada estado pelo número de quadros pedido', {
   }
   assert.deepEqual(corridas.slice(0, -1).map((c) => c.n), quadros.slice(0, -1))
 })
+
+test('listaDoConcat deixa o framerate de fora no ffmpeg antigo, que não conhece a diretiva option', () => {
+  const texto = listaDoConcat([{ quadros: 30 }], ['/a.png'], 30, { versao: 4 })
+  assert.doesNotMatch(texto, /option/)
+})
+
+test('listaDoConcat leva o framerate a partir do ffmpeg 6', () => {
+  const texto = listaDoConcat([{ quadros: 30 }], ['/a.png'], 30, { versao: 6 })
+  assert.match(texto, /option framerate 30/)
+})
