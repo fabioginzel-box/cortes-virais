@@ -167,8 +167,9 @@ US$ 0,08 por segundo de vídeo em novembro de 2026) e só roda quando você pede
 
 ## Limitações
 
-- Esta é uma versão **0.x**: o fluxo inteiro foi testado com vídeo sintético e o Replicate de fora; o
-  primeiro vídeo real numa máquina nova pode revelar arestas. Abra uma issue.
+- Os testes automáticos rodam a cada mudança no Linux, no Mac e no Windows, e o fluxo inteiro é
+  testado com vídeo sintético, mas nenhum deles chama o Replicate: a transcrição, o Gemini e o realce
+  só rodam com vídeo de verdade, que gasta crédito. Se algo der errado aí, abra uma issue.
 - A lista de vícios cortados é de português. Em outro idioma, use `--limpeza natural` ou `sem` se a
   limpeza errar.
 - No Linux, os testes automáticos rodam a cada mudança, mas um vídeo de ponta a ponta ainda não foi

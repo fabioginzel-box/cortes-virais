@@ -1,6 +1,6 @@
 {
   "name": "cortes-virais",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Transforma um vídeo longo em cortes verticais 9:16 para Shorts, Reels e TikTok, na identidade visual do seu canal: transcrição palavra a palavra, o Gemini assistindo, enquadramento em quem fala, legenda animada, finalização opcional e mesa de aprovação. Só no Claude Code; usa o Replicate.",
   "author": { "name": "Fabio Ginzel", "url": "https://github.com/fabioginzel-box" },
   "homepage": "https://github.com/fabioginzel-box/cortes-virais",
