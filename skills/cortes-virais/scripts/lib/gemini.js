@@ -48,11 +48,13 @@ function momentosDaParte (saida, parte) {
   for (const m of doc.momentos || []) {
     let a, b
     try { a = lerTempo(m.inicio); b = lerTempo(m.fim) } catch { continue }
-    if (!(b > a)) continue
+    const inicio = Number((parte.inicio + a).toFixed(1))
+    const fim = Number(Math.min(parte.fim, parte.inicio + b).toFixed(1))
+    if (!(fim > inicio)) continue
     lista.push({
-      inicio: Number((parte.inicio + a).toFixed(1)),
-      fim: Number(Math.min(parte.fim, parte.inicio + b).toFixed(1)),
-      sinais: (m.sinais || []).filter((s) => SINAIS.includes(s)),
+      inicio,
+      fim,
+      sinais: [].concat(m.sinais || []).filter((s) => SINAIS.includes(s)),
       intensidade: Math.max(1, Math.min(10, Number(m.intensidade) || 1)),
       o_que_acontece: String(m.o_que_acontece || ''),
       frase_chave: String(m.frase_chave || '')

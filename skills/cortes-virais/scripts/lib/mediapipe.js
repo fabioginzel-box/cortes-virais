@@ -45,8 +45,10 @@ async function detectarRostos (quadros) {
   const cache = await garantirCache()
   const pastaDosQuadros = path.dirname(quadros[0])
   const srv = await servir({ '/mp/': cache, '/quadros/': pastaDosQuadros, '/': TEMPLATE })
-  const pagina = await abrir({ tempoLimite: 180000 })
+  // O Chrome que não abre não pode deixar o servidor de pé: ele seguraria o processo para sempre.
+  let pagina = null
   try {
+    pagina = await abrir({ tempoLimite: 180000 })
     await pagina.carregar(`${srv.url}/rostos.html`)
     await pagina.avaliar('window.ROSTOS_PRONTO')
     const saida = []
@@ -56,9 +58,9 @@ async function detectarRostos (quadros) {
     }
     return saida
   } finally {
-    await pagina.fechar()
+    if (pagina) await pagina.fechar()
     await srv.fechar()
   }
 }
 
-module.exports = { detectarRostos }
+module.exports = { detectarRostos, pastaDoCache, ARQUIVOS }

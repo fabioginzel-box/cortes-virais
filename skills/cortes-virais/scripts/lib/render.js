@@ -12,6 +12,7 @@ const FADE = 0.012
 const ZOOM_DE_IMPACTO = 1.12
 const OLHOS_NA_ALTURA = 0.38
 const LOUDNORM = 'I=-14:TP=-1.5:LRA=11'
+const PIXEL_QUADRADO = 'scale=trunc(iw*sar/2)*2:ih,setsar=1'
 
 const n3 = (x) => Number(x.toFixed(3))
 
@@ -20,7 +21,7 @@ function argsTrecho (fonte, inicio, fim, fps, destino) {
   return {
     deslocamento: n3(de),
     args: ['-y', '-loglevel', 'error', '-ss', de.toFixed(3), '-i', fonte, '-t', (fim + MARGEM_DO_TRECHO - de).toFixed(3),
-      '-map', '0:v:0', '-map', '0:a:0?', '-vf', `fps=${fps}`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '10',
+      '-map', '0:v:0', '-map', '0:a:0?', '-vf', `${PIXEL_QUADRADO},fps=${fps}`, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '10',
       '-pix_fmt', 'yuv420p', '-c:a', 'pcm_s16le', '-ar', '48000', '-ac', '2', destino]
   }
 }
@@ -72,7 +73,6 @@ function pedacos (plano, enquadramento, deslocamentos, impactos = [], fps = 30) 
   return lista
 }
 
-const duracaoDosPedacos = (lista) => lista.reduce((t, pd) => t + pd.quadros, 0) / ((lista[0] && lista[0].fps) || 30)
 
 function termosDeX (chaves, desloc) {
   const ks = chaves.map(([t, x]) => [n3(t - desloc), x])
@@ -264,6 +264,7 @@ function conferirEntrega (probe, duracaoEsperada, previa = false) {
 
 module.exports = {
   ENTREGA,
+  PIXEL_QUADRADO,
   argsTrecho, trechoDeCada, pedacos, expressaoX, filtroDoRecorte, telaDoRealce, argsRecorte, argsMedirVolume, lerMedida,
-  filtroDoVolume, argsAcabamento, duracaoComFinalizacao, duracaoDosPedacos, argsOverlay, argsParaRealce, argsQuadroDeConferencia, conferirEntrega
+  filtroDoVolume, argsAcabamento, duracaoComFinalizacao, argsOverlay, argsParaRealce, argsQuadroDeConferencia, conferirEntrega
 }

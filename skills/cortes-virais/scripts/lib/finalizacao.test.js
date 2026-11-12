@@ -2,7 +2,7 @@
 
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { FUSAO, duracaoDoCartao, quadrosDoCartao, argsSom, argsVideoDeAssinatura, lerDuracao, dadosDoCartao } = require('./finalizacao')
+const { FUSAO, duracaoDoCartao, quadrosDoCartao, argsSom, argsVideoDeAssinatura, lerDuracao, dadosDoCartao, argsQuadroDaCena } = require('./finalizacao')
 const { resolver } = require('./marca')
 
 test('a fusão da finalização é de um quarto de segundo', () => {
@@ -61,4 +61,19 @@ test('dadosDoCartao leva os textos sem espaço sobrando', () => {
 test('dadosDoCartao leva a fonte da marca como endereço de arquivo', () => {
   const d = dadosDoCartao(resolver({ estilo: 'impacto' }), null)
   assert.match(d.fonte.url, /^file:.*Anton-Regular\.ttf$/)
+})
+
+test('argsQuadroDaCena deixa o pixel quadrado', () => {
+  const a = argsQuadroDaCena('f.mp4', 10, 'cena.png')
+  assert.equal(a[a.indexOf('-vf') + 1], 'scale=trunc(iw*sar/2)*2:ih,setsar=1')
+})
+
+test('argsQuadroDaCena não pede instante negativo', () => {
+  const a = argsQuadroDaCena('f.mp4', -0.1, 'cena.png')
+  assert.equal(a[a.indexOf('-ss') + 1], '0')
+})
+
+test('argsVideoDeAssinatura deixa o pixel quadrado antes de encaixar', () => {
+  const args = argsVideoDeAssinatura('a.mp4', 30, 'b.mov')
+  assert.match(args[args.indexOf('-filter_complex') + 1], /^\[0:v\]scale=trunc\(iw\*sar\/2\)\*2:ih,setsar=1,split=2/)
 })

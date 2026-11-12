@@ -98,10 +98,10 @@ function estados (listaDeBlocos, { duracao, fps = 30, gancho = PADRAO.gancho } =
   return lista.map(({ de, ate, chave, dados }) => ({ de, ate, quadros: ate - de, chave, dados }))
 }
 
-// O último arquivo se repete no fim, senão o concat ignora a duração dele. A barra vai para a frente
-// porque o ffmpeg do Windows aceita assim, e a contrabarra seria lida como escape.
+// O último arquivo se repete no fim, senão o concat ignora a duração dele. Barra para a frente: o ffmpeg
+// do Windows aceita, e a contrabarra seria escape. Sem o framerate, o PNG entra na base de 1/25 s.
 function listaDoConcat (lista, arquivos, fps = 30) {
-  const caminho = (a) => `file '${a.replace(/\\/g, '/').replace(/'/g, "'\\''")}'`
+  const caminho = (a) => `file '${a.replace(/\\/g, '/').replace(/'/g, "'\\''")}'\noption framerate ${fps}`
   const linhas = []
   lista.forEach((e, k) => {
     linhas.push(caminho(arquivos[k]))

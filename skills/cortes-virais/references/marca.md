@@ -103,7 +103,7 @@ grave no `marca.json`, rode o `marca` e a `amostra`. Os cortes já renderizados 
 | `legenda.ativa.texto` | cor | a letra da palavra ativa |
 | `legenda.destaque` | cor | as palavras de `destaques` do corte, quando não estão sendo ditas |
 | `legenda.caixaAlta` | `true`, `false` | caixa alta na legenda |
-| `legenda.tamanho` | `P`, `M`, `G` | 76, 92 ou 108 px no 1080×1920 (encolhe até caber em 2 linhas) |
+| `legenda.tamanho` | `P`, `M`, `G` | 76, 92 ou 108 px no 1080×1920 (encolhe até caber em 2 linhas e na largura da zona) |
 | `card.ligado` | `true`, `false` | o card do gancho nos primeiros 4 s |
 | `card.fundo`, `card.texto` | cor | as cores do card |
 | `finalizacao.modo` | `nenhuma`, `cartao`, `video` | o fim de cada corte |

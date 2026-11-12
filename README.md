@@ -198,6 +198,9 @@ Os testes não chamam serviço pago nem precisam de token:
 cd skills/cortes-virais/scripts && node --test lib/*.test.js
 ```
 
+Alguns abrem o Chrome sem janela (a legenda, a mesa) ou rodam o ffmpeg de verdade (o overlay da
+legenda); sem eles na máquina, esses pulam.
+
 O GitHub Actions roda os mesmos testes no Mac, no Windows e no Linux a cada push.
 
 ## Sobre

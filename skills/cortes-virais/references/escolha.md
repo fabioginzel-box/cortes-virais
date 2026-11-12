@@ -82,7 +82,10 @@ O corte não precisa ser um trecho contínuo. `trechos` é a lista do que toca, 
 - **Juntar trechos:** quando a ideia está espalhada, com uma digressão no meio, pule a digressão. Cada
   trecho começa e termina em frase inteira.
 - **Pausas e vícios** o `conferir` tira sozinho, pelo modo de limpeza: `dinamico` (o padrão),
-  `natural` (respira mais, para conversa emocional) ou `sem`. Riso não é cortado.
+  `natural` (respira mais, para conversa emocional) ou `sem`. Riso não é cortado, e o riso ou o aplauso
+  logo depois da última palavra entra no fim do corte, até 3 s (vinheta de música não). O modo vale para
+  todos os cortes; o corte que vive de um silêncio (a reação muda, a prova na tela) leva
+  `"limpeza": "sem"` no candidato, senão a pausa vira 0,3 s.
 
 Não invente edição para mostrar trabalho. Um trecho contínuo bem escolhido é o caso comum.
 
@@ -95,7 +98,8 @@ Não invente edição para mostrar trabalho. Um trecho contínuo bem escolhido �
   com conflito, virada ou número, sem cara de manchete de jornal e sem emoji. Entre 8 e 15 palavras é
   o normal.
 - **`descricao`**: duas ou três frases sobre o corte e de onde ele vem (o episódio, o convidado).
-- **`hashtags`**: até 3, que o YouTube mostra acima do título. `#shorts` não precisa.
+- **`hashtags`**: até 3, que o YouTube mostra acima do título; o `conferir` avisa acima disso.
+  `#shorts` não precisa.
 - **`porque`**: uma frase sobre por que este corte prende. Vai para a mesa.
 - **`layout`**: `auto` (o padrão: segue quem fala e divide a tela nos momentos em que os dois reagem,
   numa troca rápida de fala ou num riso), `dividido` (os dois rostos empilhados o corte inteiro),

@@ -83,8 +83,8 @@ Siga [references/escolha.md](references/escolha.md):
 ## 5. A conferência
 
 `node scripts/cortes.js conferir <pasta>`. Ele ajusta as bordas a palavra e frase, tira pausa e vício
-(`--limpeza natural` para conversa emocional, `sem` para não mexer), calcula a nota pela régua do
-canal, descarta o que se repete e imprime, de cada corte, o que se ouve na versão editada e o texto em
+(`--limpeza natural` para conversa emocional, `sem` para não mexer; `"limpeza"` no candidato vale só
+para ele), calcula a nota pela régua do canal, descarta o que se repete e imprime, de cada corte, o que se ouve na versão editada e o texto em
 volta do fim.
 
 Releia cada corte como quem nunca viu o vídeo, pelos três passos do fim de
@@ -105,8 +105,10 @@ Chrome), liga cada voz ao rosto que fala, monta o vídeo com a legenda e o card 
 e grava em `<pasta>/previas/`, já com a finalização do canal, se houver. Ele diz o enquadramento de
 cada um ("segue quem fala, 4 trocas", "tela dividida", "tela inteira, sem rosto"). Se um corte saiu
 com o layout errado, mude o `layout` dele no `candidatos.json`, rode o `conferir` e a `previa` daquele
-corte (`--cortes 3`). Uns 40 s por corte, mais o cartão final, quando houver, que se desenha para cada
-corte porque mostra a cena do fim dele. `--sem-finalizacao` tira a finalização.
+corte (`--cortes 3`). Se a prévia de um corte imprimir `PROBLEMA` (o recorte não dura o que o plano
+dava, e a legenda sairia fora da fala), não leve esse corte à mesa: rode a `previa` dele de novo e, se
+repetir, conte a quem pediu. Uns 40 s por corte, mais o cartão final, quando houver, que se desenha
+para cada corte porque mostra a cena do fim dele. `--sem-finalizacao` tira a finalização.
 
 ## 7. A mesa de aprovação
 
@@ -141,7 +143,8 @@ rode `aprovar --cortes 1,3` com os escolhidos.
    - **Mesa local:** pare o comando da mesa; as aprovações já estão em `<pasta>/mesa/cortes/`.
 
    Depois rode `node scripts/cortes.js aprovar <pasta>`. Ele grava o `aprovado.json` e lista os
-   aprovados.
+   aprovados. Se recusar um gancho acima de 60 caracteres ou um título acima de 100, editados na mesa,
+   peça para encurtar lá e rode de novo.
 2. `node scripts/cortes.js render <pasta>`, com `--realce` quando a fonte tem 1080 linhas ou menos
    (passa pela Topaz no Replicate; ver [references/estilo.md](references/estilo.md#o-realce)). Sai em
    `<pasta>/final/` um MP4 1080×1920 e um `.txt` com título, descrição e hashtags por corte, com a

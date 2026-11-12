@@ -3,7 +3,7 @@
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
 const {
-  argsTrecho, trechoDeCada, pedacos, expressaoX, filtroDoRecorte, telaDoRealce, argsRecorte, lerMedida, filtroDoVolume, argsAcabamento, duracaoComFinalizacao, duracaoDosPedacos, conferirEntrega
+  argsTrecho, trechoDeCada, pedacos, expressaoX, filtroDoRecorte, telaDoRealce, argsRecorte, lerMedida, filtroDoVolume, argsAcabamento, duracaoComFinalizacao, conferirEntrega
 } = require('./render')
 
 test('argsTrecho pega meio segundo antes do início e devolve o deslocamento', () => {
@@ -45,7 +45,8 @@ test('pedacos soma os quadros da duração do plano, sem acumular sobra a cada e
   const plano = { mantidos, trechos: [{ inicio: 10, fim: 80 }] }
   const lista = pedacos(plano, { planos: [{ de: 0, ate: 40, tipo: 'tela' }] }, [9.5], [], 30)
   const doPlano = mantidos.reduce((t, [a, b]) => t + b - a, 0)
-  assert.ok(Math.abs(duracaoDosPedacos(lista) - doPlano) <= 1 / 60)
+  const dosPedacos = lista.reduce((t, pd) => t + pd.quadros, 0) / 30
+  assert.ok(Math.abs(dosPedacos - doPlano) <= 1 / 60)
 })
 
 test('pedacos começa cada pedaço no quadro em que o anterior acabou, na linha editada', () => {
@@ -249,4 +250,9 @@ test('argsRecorte passa o filtro por arquivo com a sintaxe do ffmpeg 7 em diante
 
 test('argsRecorte usa o -filter_complex_script no ffmpeg 6', () => {
   assert.ok(argsRecorte(['t0.mov'], 'filtro.txt', 30, 'r.mov', 6).includes('-filter_complex_script'))
+})
+
+test('argsTrecho deixa o pixel quadrado antes de recortar', () => {
+  const a = argsTrecho('f.mp4', 10, 20, 30, 't.mov').args
+  assert.equal(a[a.indexOf('-vf') + 1], 'scale=trunc(iw*sar/2)*2:ih,setsar=1,fps=30')
 })

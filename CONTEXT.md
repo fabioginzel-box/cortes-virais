@@ -38,7 +38,7 @@ O texto curto nos primeiros 4 s do corte, num cartão nas cores do canal. Comple
 
 **Limpeza**:
 O corte das pausas longas e dos vícios ("hum", "éé") dentro dos trechos, feito pelo `conferir` no modo
-`dinamico`, `natural` ou `sem`.
+`dinamico`, `natural` ou `sem`; o candidato pode pedir o modo dele no campo `limpeza`.
 
 **Mantido**:
 Um pedaço do vídeo de origem que sobrou depois da limpeza. A linha do tempo do corte é a soma dos

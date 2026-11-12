@@ -3,7 +3,7 @@
 // "Mantidos" são os pedaços da fonte que tocam, na ordem em que tocam, já sem pausa longa nem vício;
 // a linha do tempo editada é a soma deles.
 
-const { lerTempo, terminaFrase, ehVicio, formatarTempo } = require('./transcricao')
+const { lerTempo, terminaFrase, ehVicio, formatarTempo, aplicarCorrecoes } = require('./transcricao')
 
 const PESOS = { gancho: 0.30, sozinho: 0.25, emocao: 0.20, valor: 0.15, desfecho: 0.10 }
 const NOTA_MINIMA = 60
@@ -17,7 +17,12 @@ const MODOS = {
 }
 
 const LIMITES = { min: 15, max: 90, faixaMin: 25, faixaMax: 60, idealMin: 30, idealMax: 45 }
+const TITULO_MAXIMO = 100
+const GANCHO_MAXIMO = 60
 const FOLGA_DO_FIM_DO_VIDEO = 0.05
+// Só riso e aplauso estendem o fim do corte, e no máximo 3 s: uma vinheta de música não é desfecho.
+const REACAO = /laugh|ris[oa]|gargalh|applau|aplaus/i
+const REACAO_MAXIMA = 3
 const INICIO_FRACO = /^(e|mas|então|aí|daí|porque|pois|isso|ele|ela|eles|elas|esse|essa|esses|essas|aquilo|aquele|aquela|também|como eu (te )?(disse|falei)|igual eu falei)(?![\p{L}\p{N}])/iu
 
 // O ponto de corte nunca cai num vício: ele é tratado como pausa.
@@ -68,7 +73,8 @@ function pontoDeInicio (t, palavras) {
       if (escolhido < 0 || Math.abs(fala[i].s - t) < Math.abs(fala[escolhido].s - t)) escolhido = i
     }
   }
-  if (escolhido < 0) escolhido = Math.max(0, fala.findIndex((p) => p.s >= t))
+  // Sem palavra por perto (um silêncio longo, uma prova na tela), vale o tempo pedido.
+  if (escolhido < 0) return { corte: arred(t), deslocamento: 0 }
   const w = fala[escolhido]
   const antes = fimDoVizinhoAntes(palavras.filter((p) => p !== w), w.s)
   const vicioColado = vicios(palavras).some((p) => p.e <= w.s + 0.001 && p.e === antes)
@@ -95,15 +101,12 @@ function pontoDeFim (t, palavras) {
       if (escolhido < 0 || Math.abs(fala[i].e - t) < Math.abs(fala[escolhido].e - t)) escolhido = i
     }
   }
-  if (escolhido < 0) {
-    const antes = fala.filter((p) => p.e <= t)
-    escolhido = antes.length ? fala.indexOf(antes[antes.length - 1]) : 0
-  }
+  if (escolhido < 0) return { corte: arred(t), deslocamento: 0 }
   const w = fala[escolhido]
   const prox = fala[escolhido + 1]
   let fim = w.e
-  const riso = palavras.find((p) => p.ev && p.s >= w.e - 0.1 && p.s <= w.e + 0.6)
-  if (riso && (!prox || riso.e <= prox.s)) fim = Math.max(fim, riso.e)
+  const riso = palavras.find((p) => p.ev && REACAO.test(p.t) && p.s >= w.e - 0.1 && p.s <= w.e + 0.6)
+  if (riso && (!prox || riso.e <= prox.s)) fim = Math.max(fim, Math.min(riso.e, w.e + REACAO_MAXIMA))
   const depois = inicioDoVizinhoDepois(palavras.filter((p) => p !== w && !(riso && p === riso)), fim)
   const vicioColado = vicios(palavras).some((p) => p.s === depois)
   const folga = !Number.isFinite(depois) ? 0.25 : Math.min(0.25, Math.max(0, vicioColado ? depois - fim : (depois - fim) / 2))
@@ -135,15 +138,17 @@ function mantidos (a, b, palavras, modo = 'dinamico') {
     if (alvo >= pausa) continue
     cortes.push([x.e + alvo / 2, y.s - alvo / 2])
   }
-  const falas = itens.filter((p) => !p.ev)
+  // A borda é a da fala ou do riso: o corte do vício não leva junto o riso que veio antes dele.
   const naBorda = (de, ate) => palavras.filter((p) => !p.ev && ehVicio(p.t) && p.e > de + 0.001 && p.s < ate - 0.001)
   let inicio = a
   let fim = b
-  if (falas.length) {
-    const antes = naBorda(a, falas[0].s)
-    if (antes.length) inicio = Math.max(a, falas[0].s - 0.12, ...antes.map((p) => Math.min(p.e, falas[0].s)))
-    const depois = naBorda(falas[falas.length - 1].e, b)
-    if (depois.length) fim = Math.min(b, falas[falas.length - 1].e + 0.2, ...depois.map((p) => Math.max(p.s, falas[falas.length - 1].e)))
+  if (itens.length) {
+    const primeiro = Math.min(...itens.map((p) => p.s))
+    const ultimo = Math.max(...itens.map((p) => p.e))
+    const antes = naBorda(a, primeiro)
+    if (antes.length) inicio = Math.max(a, primeiro - 0.12, ...antes.map((p) => Math.min(p.e, primeiro)))
+    const depois = naBorda(ultimo, b)
+    if (depois.length) fim = Math.min(b, ultimo + 0.2, ...depois.map((p) => Math.max(p.s, ultimo)))
   }
   const lista = []
   for (const [c1, c2] of cortes) {
@@ -179,8 +184,9 @@ function linhaDoTempo (lista) {
   }
 }
 
-// Uma palavra pertence ao bloco que contém o meio dela.
-function palavrasEditadas (palavras, lista, { comVicios = false } = {}) {
+// Uma palavra pertence ao bloco que contém o meio dela. A correção de grafia entra depois do corte: a que
+// junta palavras separadas por uma pausa cortada teria o meio dentro da pausa e sumiria.
+function palavrasEditadas (palavras, lista, { comVicios = false, correcoes = [] } = {}) {
   const saida = []
   let acumulado = 0
   for (const [a, b] of lista) {
@@ -192,7 +198,7 @@ function palavrasEditadas (palavras, lista, { comVicios = false } = {}) {
     }
     acumulado += b - a
   }
-  return saida
+  return correcoes.length ? aplicarCorrecoes(saida, correcoes) : saida
 }
 
 function notaDoCorte (notas, pesos = PESOS, minima = NOTA_MINIMA) {
@@ -226,10 +232,11 @@ function problemasDoCandidato (c, duracaoFonte) {
   const p = []
   if (c.id == null) p.push('sem id')
   if (!c.titulo || !String(c.titulo).trim()) p.push('sem título')
-  else if ([...String(c.titulo)].length > 100) p.push('título com mais de 100 caracteres (o limite do YouTube)')
+  else if ([...String(c.titulo)].length > TITULO_MAXIMO) p.push(`título com mais de ${TITULO_MAXIMO} caracteres (o limite do YouTube)`)
   if (!c.gancho || !String(c.gancho).trim()) p.push('sem o texto do gancho (o card de abertura)')
-  else if ([...String(c.gancho)].length > 60) p.push('gancho com mais de 60 caracteres: não cabe em duas linhas')
+  else if ([...String(c.gancho)].length > GANCHO_MAXIMO) p.push(`gancho com mais de ${GANCHO_MAXIMO} caracteres: não cabe em duas linhas`)
   if (!Array.isArray(c.trechos) || !c.trechos.length) p.push('sem trechos')
+  if (c.limpeza != null && !Object.hasOwn(MODOS, c.limpeza)) p.push(`limpeza tem de ser ${Object.keys(MODOS).join(', ')}`)
   for (const chave of Object.keys(PESOS)) {
     const v = c.notas && c.notas[chave]
     if (typeof v !== 'number' || v < 0 || v > 100) p.push(`notas.${chave} tem de ser um número de 0 a 100`)
@@ -258,7 +265,7 @@ function avisosDoCorte (corte, palavrasDoCorte, limites, outros, minima = NOTA_M
     avisos.push(`${Math.round(corte.duracao)} s, fora da faixa de ${limites.faixaMin} a ${limites.faixaMax} s (o ideal é de ${limites.idealMin} a ${limites.idealMax} s)`)
   }
   if ([...String(corte.gancho || '')].length > 40) avisos.push('gancho com mais de 40 caracteres: tende a quebrar em três linhas')
-  if ((corte.hashtags || []).length > 5) avisos.push('mais de 5 hashtags: o YouTube mostra 3 acima do título')
+  if ((corte.hashtags || []).length > 3) avisos.push('mais de 3 hashtags: o YouTube mostra só 3 acima do título')
   if (corte.nota < minima) avisos.push(`nota ${corte.nota}, abaixo de ${minima}`)
   for (const o of outros) {
     const perto = corte.fonte.some(([a, b]) => o.fonte.some(([c, d]) => Math.max(a, c) - Math.min(b, d) < 120))
@@ -270,23 +277,36 @@ function avisosDoCorte (corte, palavrasDoCorte, limites, outros, minima = NOTA_M
 function conferirCortes (doc, palavras, { duracaoFonte = null, modo = 'dinamico', limites = {}, regua = null } = {}) {
   const lim = { ...LIMITES, ...limites }
   const { pesos, minima } = lerRegua(regua)
-  const comVicios = modo === 'sem'
   const problemas = []
   const planos = []
-  for (const c of (doc && doc.cortes) || []) {
+  const candidatos = (doc && doc.cortes) || []
+  const vezes = new Map()
+  for (const c of candidatos) vezes.set(String(c.id), (vezes.get(String(c.id)) || 0) + 1)
+  // A folga depois da última palavra não pode passar do fim do vídeo: lá não há quadro para recortar.
+  const ultimo = duracaoFonte ? arred(duracaoFonte - FOLGA_DO_FIM_DO_VIDEO) : Infinity
+  for (const c of candidatos) {
     const erros = problemasDoCandidato(c, duracaoFonte)
+    if (c.id != null && vezes.get(String(c.id)) > 1) erros.push(`id ${c.id} repetido: a prévia, a aprovação e o arquivo final de um apagariam os do outro`)
     if (erros.length) { problemas.push({ id: c.id, problemas: erros }); continue }
     const trechos = c.trechos.map((t) => {
       const a = lerTempo(t.inicio)
       const b = lerTempo(t.fim)
       const ini = pontoDeInicio(a, palavras)
       const fim = pontoDeFim(b, palavras)
-      // A folga depois da última palavra não pode passar do fim do vídeo: lá não há quadro para recortar.
-      const ultimo = duracaoFonte ? arred(duracaoFonte - FOLGA_DO_FIM_DO_VIDEO) : Infinity
       const corte = Math.min(ultimo, Math.max(fim.corte, ini.corte + 0.5))
       return { inicio: ini.corte, fim: corte, pedido: { inicio: a, fim: b }, ajuste: { inicio: ini.deslocamento, fim: arred(corte - b) } }
     })
-    const lista = trechos.flatMap((t) => mantidos(t.inicio, t.fim, palavras, modo))
+    // Trechos pedidos em sequência que o ajuste fez se cruzar tocariam a fala duas vezes; a abertura no
+    // ponto alto, que repete de propósito, não foi pedida em sequência.
+    for (let k = 0; k + 1 < trechos.length; k++) {
+      const [t, prox] = [trechos[k], trechos[k + 1]]
+      if (t.pedido.fim <= prox.pedido.inicio && t.fim > prox.inicio && prox.inicio > t.inicio + 0.5) {
+        t.fim = prox.inicio
+        t.ajuste.fim = arred(t.fim - t.pedido.fim)
+      }
+    }
+    const modoDoCorte = c.limpeza == null ? modo : c.limpeza
+    const lista = trechos.flatMap((t) => mantidos(t.inicio, t.fim, palavras, modoDoCorte))
     const duracao = arred(cobertura(lista), 2)
     const bruto = trechos.reduce((s, t) => s + (t.fim - t.inicio), 0)
     const plano = {
@@ -297,7 +317,7 @@ function conferirCortes (doc, palavras, { duracaoFonte = null, modo = 'dinamico'
       duracao,
       cortado: bruto > 0 ? Math.round(100 * (1 - duracao / bruto)) : 0,
       nota: notaDoCorte(c.notas, pesos, minima),
-      limpeza: modo
+      limpeza: modoDoCorte
     }
     if (duracao < lim.min || duracao > lim.max) {
       problemas.push({ id: c.id, problemas: [`${duracao} s depois da limpeza, fora do limite de ${lim.min} a ${lim.max} s`] })
@@ -315,13 +335,13 @@ function conferirCortes (doc, palavras, { duracaoFonte = null, modo = 'dinamico'
     else ficam.push(p)
   }
   for (const p of ficam) {
-    p.avisos = avisosDoCorte(p, palavrasEditadas(palavras, p.mantidos, { comVicios }), lim, ficam.filter((o) => o !== p && o.nota >= p.nota), minima)
+    p.avisos = avisosDoCorte(p, palavrasEditadas(palavras, p.mantidos, { comVicios: p.limpeza === 'sem' }), lim, ficam.filter((o) => o !== p && o.nota >= p.nota), minima)
   }
   return { cortes: ficam, descartados, problemas }
 }
 
-function textoDoCorte (palavras, plano) {
-  return palavrasEditadas(palavras, plano.mantidos, { comVicios: plano.limpeza === 'sem' }).filter((p) => !p.ev).map((p) => p.t).join(' ')
+function textoDoCorte (palavras, plano, correcoes = []) {
+  return palavrasEditadas(palavras, plano.mantidos, { comVicios: plano.limpeza === 'sem', correcoes }).filter((p) => !p.ev).map((p) => p.t).join(' ')
 }
 
 function contextoDoFim (plano, palavras, janela = 10) {
@@ -336,6 +356,6 @@ function contextoDoFim (plano, palavras, janela = 10) {
 }
 
 module.exports = {
-  LIMITES,
+  LIMITES, TITULO_MAXIMO, GANCHO_MAXIMO,
   pontoDeInicio, pontoDeFim, mantidos, linhaDoTempo, palavrasEditadas, notaDoCorte, lerRegua, conferirCortes, textoDoCorte, contextoDoFim
 }

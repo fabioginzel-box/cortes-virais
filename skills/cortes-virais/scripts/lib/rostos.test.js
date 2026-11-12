@@ -155,3 +155,29 @@ test('planos dá ao pedaço curto sem quadro o rosto do vizinho, e não o do com
   const plano = r.planos.find((p) => p.de <= 9.95 && p.ate > 9.95)
   assert.equal(plano.x < 960 ? 'esquerda' : 'direita', 'direita')
 })
+
+test('planos não repete os pontos do rosto ao juntar o pedaço que herdou do vizinho', () => {
+  const quadros = Array.from({ length: 61 }, (_, k) => {
+    const t = Number((k * 0.2).toFixed(3))
+    return { t, faces: [{ cx: t < 5.7 ? 0.3 + 0.3 * (t / 5) : 0.8, cy: 0.4, w: 0.15, h: 0.25, boca: 0.2 }] }
+  })
+  const r = planos({ quadros, cortesDeCena: [5.79], palavrasEditadas: falasDe(() => 'S1', 11), mantidos: [[0, 5.01], [5.62, 12]], info })
+  const tempos = r.planos.filter((p) => p.xs).map((p) => p.xs.map((k) => k[0]))
+  assert.ok(tempos.length && tempos.every((ts) => ts.every((t, i) => i === 0 || t > ts[i - 1])))
+})
+
+test('planos não mostra o ouvinte no pedaço de um quadro só', () => {
+  const quadros = Array.from({ length: 61 }, (_, k) => ({ t: Number((k * 0.2).toFixed(3)), faces: [rosto(0.3, 0.1, 0.3), rosto(0.7, k % 2 ? 0.4 : 0.1, 0.2)] }))
+  const r = planos({ quadros, palavrasEditadas: falasDe(() => 'S2', 11), mantidos: [[0, 4.9], [5.5, 5.8], [6.3, 12]], info })
+  assert.deepEqual(r.planos.map((p) => (p.x < 960 ? 'esquerda' : 'direita')), ['direita'])
+})
+
+test('planos deixa o pedaço de um quadro numa câmera própria com o rosto dela', () => {
+  const quadros = Array.from({ length: 51 }, (_, k) => {
+    const t = Number((k * 0.2).toFixed(3))
+    return { t, faces: [t > 5.1 && t < 5.3 ? rosto(0.7) : rosto(0.3)] }
+  })
+  const r = planos({ quadros, palavrasEditadas: falasDe(() => 'S1', 10), mantidos: [[0, 10]], cortesDeCena: [5.1, 5.3], info })
+  const plano = r.planos.find((p) => p.de <= 5.2 && p.ate > 5.2)
+  assert.equal(plano.x < 960 ? 'esquerda' : 'direita', 'direita')
+})

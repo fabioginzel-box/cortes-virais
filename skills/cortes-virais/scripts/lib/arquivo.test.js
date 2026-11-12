@@ -17,7 +17,7 @@ test('gerar grava no temporário e renomeia no fim', () => {
   assert.equal(fs.readFileSync(alvo, 'utf8'), 'x')
 })
 
-test('gerar mantém a extensão no nome temporário', () => {
+test('temporario mantém a extensão do alvo', () => {
   assert.equal(path.extname(temporario('/x/recorte-1.mov')), '.mov')
 })
 

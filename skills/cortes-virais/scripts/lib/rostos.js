@@ -194,7 +194,8 @@ function fronteiras (lt, cortesDeCena, extras) {
 function planos ({ quadros, palavrasEditadas, mantidos, info, layout = 'auto', cortesDeCena = [] }) {
   const lt = linhaDoTempo(mantidos)
   const duracao = lt.duracao
-  const trocasDeCamera = cortesDeCena.flatMap((c) => lt.todosEditados(c)).length
+  const cortesEditados = cortesDeCena.flatMap((c) => lt.todosEditados(c))
+  const trocasDeCamera = cortesEditados.length
   if (layout === 'tela') return { layout: 'tela', trocasDeCamera, planos: [{ de: 0, ate: duracao, tipo: 'tela' }] }
   const editados = quadrosEditados(quadros, lt)
   const principal = layout === 'rosto' ? rostoDoPedaco(editados) : null
@@ -207,13 +208,19 @@ function planos ({ quadros, palavrasEditadas, mantidos, info, layout = 'auto', c
     if (ate - de < 0.001) continue
     const doPedaco = noIntervalo(editados, de, ate)
     const tomada = tomadas.filter((m) => m <= de).length - 1
-    if (!doPedaco.length) { pedacos.push({ de, ate, tomada, herda: true }); continue }
+    const camera = cortesEditados.filter((m) => m <= de).length
+    if (!doPedaco.length) { pedacos.push({ de, ate, tomada, camera, herda: true }); continue }
     const tr = principal ? rostoFixo(doPedaco, principal) : rostoDoPedaco(doPedaco)
-    pedacos.push(tr ? { de, ate, tomada, tipo: 'rosto', pontos: tr.pontos, cx: tr.cx, h: tr.h } : { de, ate, tomada, tipo: 'tela' })
+    const proprio = tr ? { tipo: 'rosto', pontos: tr.pontos, cx: tr.cx, h: tr.h } : { tipo: 'tela' }
+    // Com um quadro só não se mede a boca: vale o vizinho da mesma câmera, e só sem ele o rosto do quadro.
+    pedacos.push(doPedaco.length < 2 ? { de, ate, tomada, camera, herda: true, proprio } : { de, ate, tomada, camera, ...proprio })
   }
   pedacos.forEach((p, k) => {
     if (!p.herda) return
-    const vizinho = [pedacos[k - 1], pedacos[k + 1]].find((v) => v && !v.herda && v.tomada === p.tomada) || maisPerto(pedacos, k)
+    const vizinhos = [pedacos[k - 1], pedacos[k + 1]].filter((v) => v && !v.herda)
+    const daTomada = vizinhos.find((v) => v.tomada === p.tomada)
+    const daCamera = p.proprio && vizinhos.find((v) => v.camera === p.camera)
+    const vizinho = daTomada || daCamera || p.proprio || maisPerto(pedacos, k)
     Object.assign(p, vizinho ? { tipo: vizinho.tipo, pontos: vizinho.pontos, cx: vizinho.cx, h: vizinho.h } : { tipo: 'tela' })
   })
 
@@ -246,7 +253,9 @@ function planos ({ quadros, palavrasEditadas, mantidos, info, layout = 'auto', c
     const intervalo = { de: Number(pl.de.toFixed(3)), ate: Number(pl.ate.toFixed(3)) }
     if (pl.tipo === 'tela') return { ...intervalo, tipo: 'tela' }
     if (pl.tipo === 'dividido') return { ...intervalo, tipo: 'dividido', cima: pl.cima, baixo: pl.baixo }
-    const pontos = pl.pontos.filter((p) => p.te >= pl.de && p.te < pl.ate)
+    // O pedaço que herdou do vizinho leva a mesma lista de pontos, e juntar os dois a repetiria: o caminho
+    // voltaria no tempo e o render somaria os dois trechos do x.
+    const pontos = [...new Map(pl.pontos.filter((p) => p.te >= pl.de && p.te < pl.ate).map((p) => [p.te, p])).values()].sort((a, b) => a.te - b.te)
     const recorte = recorteDoRosto(pontos.length ? pontos : pl.pontos, info)
     const xs = pl.ate - pl.de > 2 ? caminho(pontos, recorte, info, pl.de) : null
     return { ...intervalo, tipo: 'rosto', ...recorte, ...(xs ? { xs } : {}) }

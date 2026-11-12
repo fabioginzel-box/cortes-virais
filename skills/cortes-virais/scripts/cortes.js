@@ -26,7 +26,7 @@ const path = require('node:path')
 const { spawn } = require('node:child_process')
 const { acharChrome } = require('./lib/chrome')
 const { acharPrograma, rodar, lerVersao, infoDoVideo, argsProbe, partes, argsAudio, argsCopiaLeve, argsQuadros, argsCortesDeCena, lerCortesDeCena, argsYtDlp } = require('./lib/midia')
-const { normalizarScribe, frases, textoParaModelo, resumo: resumoDaTranscricao, formatarTempo, aplicarCorrecoes } = require('./lib/transcricao')
+const { normalizarScribe, frases, textoParaModelo, resumo: resumoDaTranscricao, formatarTempo } = require('./lib/transcricao')
 const { conferirCortes, contextoDoFim, palavrasEditadas, textoDoCorte, LIMITES } = require('./lib/plano')
 const { blocos, estados, trechosDasFrases, textoDaLegenda } = require('./lib/legendas')
 const { planos, descrever } = require('./lib/rostos')
@@ -328,14 +328,13 @@ async function assistir (pasta) {
   return 0
 }
 
-function frasesQueFaltam (palavras, c) {
-  const editadas = palavrasEditadas(palavras, c.mantidos, { comVicios: c.limpeza === 'sem' })
+function frasesQueFaltam (palavras, c, correcoes) {
+  const editadas = palavrasEditadas(palavras, c.mantidos, { comVicios: c.limpeza === 'sem', correcoes })
   return [...(c.destaques || []), ...(c.impacto || [])].filter((frase) => !trechosDasFrases(editadas, [frase]).length)
 }
 
 function conferir (pasta, o) {
   const { fonte: f, palavras, correcoes, canal } = lerVideo(pasta)
-  const corrigidas = aplicarCorrecoes(palavras, correcoes)
   const modo = texto(o, 'limpeza') || 'dinamico'
   const limites = {}
   if (o.min) limites.min = Number(o.min)
@@ -350,10 +349,10 @@ function conferir (pasta, o) {
     console.log(`\ncorte ${c.id} · nota ${c.nota} · ${c.duracao} s (${c.cortado}% de pausa e vício cortados) · ${c.tipo_gancho || 'sem tipo de gancho'} · gancho "${c.gancho}"`)
     for (const t of c.trechos) console.log(`  trecho ${formatarTempo(t.inicio)}–${formatarTempo(t.fim)} (início ${t.ajuste.inicio >= 0 ? '+' : ''}${t.ajuste.inicio} s, fim ${t.ajuste.fim >= 0 ? '+' : ''}${t.ajuste.fim} s)`)
     for (const a of c.avisos) console.log(`  aviso: ${a}`)
-    for (const frase of frasesQueFaltam(corrigidas, c)) console.log(`  aviso: "${frase}" (destaque ou impacto) não está no que se ouve`)
+    for (const frase of frasesQueFaltam(palavras, c, correcoes)) console.log(`  aviso: "${frase}" (destaque ou impacto) não está no que se ouve`)
     if (!o.curto) {
       const ctx = contextoDoFim(c, palavras)
-      console.log(`  o que se ouve: ${textoDoCorte(corrigidas, c)}`)
+      console.log(`  o que se ouve: ${textoDoCorte(palavras, c, correcoes)}`)
       console.log(`  em volta do fim (${ctx.fim}): …${ctx.antes.slice(-160)} ‖ ${ctx.depois.slice(0, 160)}…`)
     }
   }
@@ -449,8 +448,7 @@ async function renderizar (pasta, c, video, { previa, realce, destino, comFinali
   const trabalho = path.join(pasta, 'trabalho', String(c.id))
   fs.mkdirSync(trabalho, { recursive: true })
 
-  const comVicios = c.limpeza === 'sem'
-  const legenda = palavrasEditadas(aplicarCorrecoes(video.palavras, video.correcoes), c.mantidos, { comVicios })
+  const legenda = palavrasEditadas(video.palavras, c.mantidos, { comVicios: c.limpeza === 'sem', correcoes: video.correcoes })
   const impactos = trechosDasFrases(legenda, c.impacto).map((t) => ({ de: t.de - 0.05, ate: t.ate + 0.15 }))
 
   const trechos = c.trechos.map((t, k) => {
@@ -530,11 +528,10 @@ async function mesa (pasta, o) {
   if (!local && !texto(o, 'saida')) throw new Error('diga onde montar o artefato (--saida <pasta de rascunho da sessão>/artefato-cortes) ou use --local para a mesa no navegador')
   const plano = lerPlano(pasta)
   const { palavras, correcoes, canal } = lerVideo(pasta)
-  const corrigidas = aplicarCorrecoes(palavras, correcoes)
   const textos = {}
   const layouts = {}
   for (const c of plano.cortes) {
-    textos[c.id] = textoDoCorte(corrigidas, c)
+    textos[c.id] = textoDoCorte(palavras, c, correcoes)
     const enq = lerOpcional(arquivoDoEnquadramento(pasta, c.id), null)
     if (enq) layouts[c.id] = enq.layout
   }
@@ -627,7 +624,7 @@ function aprendizado (o) {
   const r = historico.resumo(linhas)
   const tabela = (grupos) => grupos.map((g) => `  ${g.nome}: ${g.cortes} cortes, retenção mediana ${g.retencao ?? '—'}%, visualizações ${g.visualizacoes ?? '—'}${g.continuaram != null ? `, continuaram ${g.continuaram}%` : ''}`).join('\n')
   console.log(`canal ${canal.nome}: ${r.cortes} cortes registrados\npor tipo de gancho:\n${tabela(r.porGancho)}\npor duração:\n${tabela(r.porDuracao)}`)
-  console.log(r.acertoDaNota == null ? 'acerto da nota: precisa de 5 cortes ou mais, com notas diferentes' : `acerto da nota (correlação de postos com a retenção): ${r.acertoDaNota}`)
+  console.log(r.acertoDaNota == null ? `acerto da nota: ${r.semAcerto}` : `acerto da nota (correlação de postos com a retenção): ${r.acertoDaNota}`)
   const regua = lerOpcional(path.join(canal.dir, 'regua.json'), null)
   console.log(regua ? `régua em uso: ${JSON.stringify(regua)}` : 'régua em uso: a padrão de references/escolha.md')
   return 0

@@ -11,7 +11,7 @@ const { abrir } = require('./chrome')
 const { hashDe } = require('./pasta')
 const { rodar } = require('./midia')
 const { gerar, identidade } = require('./arquivo')
-const { argsMedirVolume, lerMedida, filtroDoVolume } = require('./render')
+const { argsMedirVolume, lerMedida, filtroDoVolume, PIXEL_QUADRADO } = require('./render')
 const { fonteDaMarca, arquivoDoCanal, impressao } = require('./marca')
 
 const TEMPLATE = path.join(__dirname, '..', '..', 'template', 'cartao.html')
@@ -30,7 +30,7 @@ function duracaoDoCartao (cartao, duracaoDoAudio = null) {
 
 const quadrosDoCartao = (duracao, fps) => Math.round((FUSAO + duracao) * fps)
 
-const argsQuadroDaCena = (fonte, t, destino) => ['-y', '-loglevel', 'error', '-ss', String(Math.max(0, t)), '-i', fonte, '-frames:v', '1', destino]
+const argsQuadroDaCena = (fonte, t, destino) => ['-y', '-loglevel', 'error', '-ss', String(Math.max(0, t)), '-i', fonte, '-vf', PIXEL_QUADRADO, '-frames:v', '1', destino]
 
 const argsDuracao = (arquivo) => ['-v', 'error', '-show_entries', 'format=duration:stream=codec_type', '-of', 'json', arquivo]
 
@@ -45,7 +45,7 @@ function argsSom ({ audio = null, duracao, destino }) {
 }
 
 // O vídeo que não é vertical entra inteiro na largura, sobre ele mesmo desfocado, como o layout "tela".
-const ENCAIXE_VERTICAL = '[0:v]split=2[fundo][frente];' +
+const ENCAIXE_VERTICAL = `[0:v]${PIXEL_QUADRADO},split=2[fundo][frente];` +
   '[fundo]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=40,eq=brightness=-0.12[f];' +
   '[frente]scale=1080:1920:force_original_aspect_ratio=decrease[c];[f][c]overlay=(W-w)/2:(H-h)/2,setsar=1'
 

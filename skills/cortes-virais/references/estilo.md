@@ -14,7 +14,8 @@ claude-shorts, conferida em 10/11/2026). Texto, card e cartão nunca saem dela.
 
 - Nas cores do canal (`card.fundo` e `card.texto`), na fonte do canal, com cantos de 28 px.
 - No topo da zona segura (y = 250), centrado, até 870 px de largura e **2 linhas**. A letra começa em
-  70 px e encolhe até 44 px para caber.
+  70 px e encolhe até 44 px para caber, na altura e na largura; a palavra longa, que não quebra,
+  encolhe além disso se for preciso para não sair da zona.
 - Fica os **4 primeiros segundos** e some. Até 40 caracteres cabem bem; o `conferir` avisa acima disso.
 - `card.ligado: false` tira o card; o gancho continua valendo para o título e para a nota.
 
@@ -27,7 +28,8 @@ claude-shorts, conferida em 10/11/2026). Texto, card e cartão nunca saem dela.
   contorno). A palavra que está sendo dita ganha o fundo colorido (ou degradê), só a troca de cor, ou
   nada, pelo `legenda.ativa.estilo`.
 - O tamanho P, M ou G começa em 76, 92 ou 108 px e encolhe até caber em **2 linhas**; quem deve
-  quebrar a frase é o bloco.
+  quebrar a frase é o bloco. A palavra longa sozinha ("EMPREENDEDORISMO") também encolhe até caber na
+  largura da zona, abaixo do mínimo do tamanho se precisar.
 - A base do bloco fica a 480 px do fim do quadro (uns 70% da altura), longe dos botões da plataforma e
   abaixo do rosto, que o enquadramento põe a 38% do topo.
 - As palavras de `destaques` saem na cor `legenda.destaque` quando não estão sendo ditas.
@@ -109,6 +111,7 @@ até o fim. Por isso ela é curta, e o `aprendizado` mede a retenção do vídeo
 |---|---|
 | Vídeo | H.264 High 4.2, 1080×1920, CRF 17, `preset slow`, yuv420p, `+faststart`, sem quadros B e sem metadados |
 | Quadros | os da fonte (24, 25, 30, 50 ou 60); quadro variável sai a 30 |
+| Pixel | quadrado: a fonte de pixel não quadrado (HDV, algumas câmeras) vai para a largura de exibição antes do recorte, como a cena do cartão e o vídeo de assinatura |
 | Áudio | AAC 192 kbps, 48 kHz, em **-14 LUFS** e pico de -1,5 dB, medido em duas passadas |
 | Emendas | cada pedaço tem um número inteiro de quadros, com o áudio no mesmo intervalo exato, e 12 ms de fade em cada corte de pausa, para não estalar |
 | Prévia | 360×640, CRF 28, sem a segunda passada do volume |

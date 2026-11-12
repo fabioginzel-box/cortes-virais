@@ -29,7 +29,7 @@ window.claude = { use: async (nome) => {
 window.ler = (d) => window.aoMudar({ docs: [{ id: '1', data: () => d }] })
 </script>`
 
-const plano = { nome: 'teste', duracaoFonte: 600, cortes: [{ id: 1, titulo: 'Título do plano', gancho: 'Gancho do plano', descricao: 'desc', hashtags: ['#a'], nota: 80, notas: {}, duracao: 30 }] }
+const plano = { nome: 'teste', duracaoFonte: 3599.8, cortes: [{ id: 1, titulo: 'Título do plano', gancho: 'Gancho do plano', descricao: 'desc', hashtags: ['#a'], nota: 80, notas: {}, duracao: 30 }] }
 const daAna = (extra) => JSON.stringify({ aprovado: false, titulo: 'Título do plano', gancho: 'Gancho do plano', descricao: 'desc', hashtags: '#a', por: 'ana', em: '2026-11-10T10:00:00.000Z', ...extra })
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms))
 
@@ -68,8 +68,7 @@ const opcoes = { skip: semChrome && 'sem o Chrome nesta máquina' }
 test('a mesa não grava nada de quem só abriu a página', opcoes, async () => {
   await abrirMesa()
   await pagina.avaliar(`window.ler(${daAna({ aprovado: true, titulo: 'Título da Ana' })})`)
-  await esperar(1000)
-  assert.deepEqual(await pagina.avaliar('window.gravados'), [])
+  assert.deepEqual(await gravacoes(1, 3000), [])
 })
 
 test('a mesa mostra o que outra pessoa gravou', opcoes, async () => {
@@ -116,4 +115,14 @@ test('a mesa grava a aprovação com o nome de quem marcou', opcoes, async () =>
   await pagina.avaliar(`document.getElementById('aprovar-1').click()`)
   const [gravado = {}] = await gravacoes(1)
   assert.deepEqual([gravado.aprovado, gravado.por], [true, 'eu'])
+})
+
+test('a mesa arredonda a duração sem mostrar 60 segundos', opcoes, async () => {
+  await abrirMesa()
+  assert.match(await pagina.avaliar(`document.getElementById('fichas').textContent`), /vídeo de 60:00/)
+})
+
+test('a mesa não escreve "null" quando não há a visão geral do Gemini', opcoes, async () => {
+  await abrirMesa()
+  assert.doesNotMatch(await pagina.avaliar(`document.getElementById('fichas').textContent`), /null/)
 })

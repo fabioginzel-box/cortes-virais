@@ -64,8 +64,11 @@ function infoDoVideo (probe) {
   if (!v) throw new Error('o arquivo não tem vídeo')
   const a = (probe.streams || []).find((s) => s.codec_type === 'audio')
   const rotacao = Math.abs(Number((v.tags && v.tags.rotate) || ((v.side_data_list || []).find((d) => d.rotation != null) || {}).rotation || 0)) % 180
-  const largura = rotacao === 90 ? v.height : v.width
-  const altura = rotacao === 90 ? v.width : v.height
+  // Pixel não quadrado (HDV, algumas câmeras): o trecho sai em pixel quadrado, na largura de exibição.
+  const sar = fracao(v.sample_aspect_ratio && v.sample_aspect_ratio.replace(':', '/'))
+  const exibida = sar > 0 && Math.abs(sar - 1) > 0.001 ? Math.trunc((v.width * sar) / 2) * 2 : v.width
+  const largura = rotacao === 90 ? v.height : exibida
+  const altura = rotacao === 90 ? exibida : v.height
   const real = fracao(v.r_frame_rate)
   const media = fracao(v.avg_frame_rate)
   const variavel = real > 0 && media > 0 && Math.abs(real - media) / real > 0.01

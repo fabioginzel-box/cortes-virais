@@ -65,3 +65,16 @@ test('documentoAprovado leva as edições da mesa para o corte aprovado', () => 
 test('documentoAprovado recusa quando nada foi aprovado', () => {
   assert.throws(() => documentoAprovado({ cortes: [corte(1)] }, { 1: { aprovado: false } }), /nenhum corte aprovado/)
 })
+
+test('documentoAprovado recusa o gancho editado na mesa que não cabe no card', () => {
+  assert.throws(() => documentoAprovado({ cortes: [corte(1)] }, { 1: { aprovado: true, gancho: 'g'.repeat(61) } }), /gancho do corte 1 tem 61 caracteres/)
+})
+
+test('documentoAprovado recusa o título editado acima de 100 caracteres', () => {
+  assert.throws(() => documentoAprovado({ cortes: [corte(1)] }, { 1: { aprovado: true, titulo: 't'.repeat(101) } }), /título do corte 1 tem 101 caracteres/)
+})
+
+test('documentoAprovado aceita o gancho editado no limite do card', () => {
+  const r = documentoAprovado({ cortes: [corte(1)] }, { 1: { aprovado: true, gancho: 'g'.repeat(60) } })
+  assert.equal(r.cortes[0].gancho.length, 60)
+})

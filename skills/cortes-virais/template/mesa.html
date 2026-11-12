@@ -126,7 +126,7 @@
   }
   const atraso = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms) } }
   const hora = (iso) => { try { return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) } catch { return '' } }
-  const segundos = (s) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}`
+  const segundos = (s) => { const t = Math.round(s); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}` }
   const usar = (nome) => (window.claude && window.claude.use ? window.claude.use(nome).catch(() => null) : Promise.resolve(null))
   const filas = {}
   const escrever = (caminho, op) => {
@@ -135,11 +135,12 @@
   }
 
   document.getElementById('titulo').textContent = DOC.titulo
-  document.getElementById('fichas').append(
+  // O append escreveria o null como texto: sem a visão geral do Gemini, a ficha dela fica de fora.
+  document.getElementById('fichas').append(...[
     el('span', { class: 'ficha' }, [el('b', null, String(DOC.cortes.length)), ' candidatos']),
     el('span', { class: 'ficha' }, ['vídeo de ', el('b', null, segundos(DOC.duracaoFonte || 0))]),
     DOC.visaoGeral && DOC.visaoGeral.tipo ? el('span', { class: 'ficha' }, [el('b', null, DOC.visaoGeral.tipo), DOC.visaoGeral.pessoas ? ` com ${DOC.visaoGeral.pessoas} pessoas` : '']) : null
-  )
+  ].filter(Boolean))
 
   const cartoes = DOC.cortes.map((c) => criarCartao(c))
   document.getElementById('lista').append(...cartoes.map((k) => k.secao))

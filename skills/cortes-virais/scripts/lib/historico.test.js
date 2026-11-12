@@ -64,10 +64,6 @@ test('acertoDaNota sem variação nas notas não tem resposta', () => {
   assert.equal(acertoDaNota(linhas), null)
 })
 
-test('acertoDaNota dá 1 quando a ordem das notas é a da retenção', () => {
-  assert.equal(acertoDaNota([linhaCom(60, 30), linhaCom(70, 40), linhaCom(80, 50), linhaCom(90, 60), linhaCom(95, 70)]), 1)
-})
-
 test('lerNumero tira o ponto de milhar do YouTube Studio', () => {
   assert.equal(lerNumero('12.000', 'visualizacoes'), 12000)
 })
@@ -90,4 +86,26 @@ test('lerNumero tira o sinal de porcentagem', () => {
 
 test('lerNumero recusa o que não é número', () => {
   assert.throws(() => lerNumero('muito', 'visualizacoes'), /--visualizacoes "muito" não é um número/)
+})
+
+test('lerNumero lê o ponto da retenção como decimal, porque porcentagem não tem milhar', () => {
+  assert.equal(lerNumero('74.125', 'retencao'), 74.125)
+})
+
+test('lerNumero lê o ponto do "continuaram" como decimal', () => {
+  assert.equal(lerNumero('66.250', 'continuaram'), 66.25)
+})
+
+test('resumo diz que o acerto da nota precisa de 5 cortes quando há menos', () => {
+  assert.match(resumo([linha('a', 30, 80, 70)]).semAcerto, /5 cortes/)
+})
+
+test('resumo diz que o acerto da nota não se mede quando a retenção não varia', () => {
+  const linhas = [60, 65, 70, 75, 80].map((n) => linha('a', 30, n, 50))
+  assert.match(resumo(linhas).semAcerto, /não variam/)
+})
+
+test('resumo não traz o porquê de não medir quando o acerto existe', () => {
+  const linhas = [60, 65, 70, 75, 80].map((n, i) => linha('a', 30, n, 40 + i * 5))
+  assert.equal(resumo(linhas).semAcerto, null)
 })

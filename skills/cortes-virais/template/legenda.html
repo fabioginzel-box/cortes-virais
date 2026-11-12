@@ -77,16 +77,21 @@
       return true
     }
 
-    // Quem quebra a frase é o bloco; encolher aqui só garante que nada sai da zona segura.
+    // Quem quebra a frase é o bloco; encolher aqui só garante que nada sai da zona segura. Palavra não
+    // quebra: a longa demais passa da largura, que manda até abaixo do mínimo do tamanho.
+    const naLargura = (el) => el.scrollWidth <= el.clientWidth + 1 && [...el.children].every((s) => s.getBoundingClientRect().width <= el.clientWidth)
     function caber (el, tamanhoInicial, minimo, linhas, folga) {
       for (let px = tamanhoInicial; px >= minimo; px -= 2) {
         el.style.fontSize = px + 'px'
         const estilo = getComputedStyle(el)
         const altura = parseFloat(estilo.lineHeight) || px * 1.08
         const conteudo = el.scrollHeight - parseFloat(estilo.paddingTop) - parseFloat(estilo.paddingBottom)
-        if (conteudo <= altura * linhas + folga) return px
+        if (conteudo <= altura * linhas + folga && naLargura(el)) return px
       }
-      return minimo
+      let px = minimo
+      el.style.fontSize = px + 'px'
+      while (px > 20 && !naLargura(el)) el.style.fontSize = (px -= 2) + 'px'
+      return px
     }
 
     async function montar (e) {

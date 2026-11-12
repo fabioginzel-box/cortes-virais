@@ -5,6 +5,7 @@
 
 const fs = require('node:fs')
 const path = require('node:path')
+const { TITULO_MAXIMO, GANCHO_MAXIMO } = require('./plano')
 
 const RAIZ = path.join(__dirname, '..', '..')
 const MARCA_DADOS = '<!-- CORTES -->'
@@ -139,6 +140,12 @@ function documentoAprovado (doc, mesa) {
     })
   }
   if (!aprovados.length) throw new Error('nenhum corte aprovado na mesa: é só marcar "Aprovar" nos que vão para o canal')
+  // A mesa só conta os caracteres: o que passa da régua do conferir estouraria o card ou o YouTube.
+  const longos = aprovados.flatMap((c) => [
+    [...c.titulo].length > TITULO_MAXIMO ? `o título do corte ${c.id} tem ${[...c.titulo].length} caracteres, acima dos ${TITULO_MAXIMO} do YouTube` : null,
+    [...c.gancho].length > GANCHO_MAXIMO ? `o gancho do corte ${c.id} tem ${[...c.gancho].length} caracteres e não cabe no card (até ${GANCHO_MAXIMO}; o ideal é até 40)` : null
+  ]).filter(Boolean)
+  if (longos.length) throw new Error(`${longos.join('; ')}: encurte na mesa e rode o aprovar de novo`)
   return { ...doc, cortes: aprovados }
 }
 

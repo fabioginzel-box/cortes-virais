@@ -103,3 +103,16 @@ test('argsYtDlp sem programas achados não passa as opções', () => {
 test('argsYtDlp sobrescreve o download de outro vídeo na mesma pasta', () => {
   assert.ok(argsYtDlp('https://youtu.be/x', '/p/fonte.mp4').includes('--force-overwrites'))
 })
+
+test('infoDoVideo usa a largura de exibição do pixel não quadrado', () => {
+  const i = infoDoVideo(probe({ width: 1440, height: 1080, sample_aspect_ratio: '4:3' }))
+  assert.deepEqual([i.largura, i.altura], [1920, 1080])
+})
+
+test('infoDoVideo ignora o SAR indefinido', () => {
+  assert.equal(infoDoVideo(probe({ sample_aspect_ratio: '0:1' })).largura, 1920)
+})
+
+test('infoDoVideo arredonda a largura de exibição como o filtro do trecho', () => {
+  assert.equal(infoDoVideo(probe({ width: 720, height: 480, sample_aspect_ratio: '32:27' })).largura, 852)
+})

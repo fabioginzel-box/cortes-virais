@@ -51,7 +51,8 @@ Tudo de um vídeo fica na pasta que o `pasta` criou, em
 }
 ```
 
-- `id` é um número que não se repete no arquivo. É ele que aparece na mesa e no nome dos arquivos.
+- `id` é um número que não se repete no arquivo. É ele que aparece na mesa e no nome dos arquivos; o
+  `conferir` dá `PROBLEMA` para o id repetido.
 - `trechos` vão na ordem em que tocam. Os tempos podem ser `h:mm:ss.d` (como no `falas.txt`) ou
   segundos. Não precisam cair na palavra exata: o `conferir` ajusta. No exemplo, o primeiro trecho é a
   abertura no ponto alto, e o segundo é a história desde o começo.
@@ -59,6 +60,8 @@ Tudo de um vídeo fica na pasta que o `pasta` criou, em
   do canal; `impacto`
   (opcional) são frases ditas no corte que ganham um zoom seco de 12% enquanto são faladas. As duas
   se acham sem ligar para caixa, acento e pontuação; o `conferir` avisa a que não está no corte.
+- `limpeza` (opcional) troca, só neste corte, o modo de limpeza do `conferir` (`dinamico`, `natural`
+  ou `sem`): para o momento que vive de um silêncio.
 - `notas`, `tipo_gancho` e o resto seguem [escolha.md](escolha.md).
 
 Na pasta de cada canal, em `canais/<canal>/`, ficam o `marca.json` da identidade

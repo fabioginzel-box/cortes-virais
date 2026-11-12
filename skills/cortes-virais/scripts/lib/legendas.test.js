@@ -2,7 +2,13 @@
 
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
+const { spawnSync } = require('node:child_process')
 const { blocos, estados, listaDoConcat, textoDaLegenda, trechosDasFrases } = require('./legendas')
+const { argsOverlay } = require('./render')
+const { acharPrograma } = require('./midia')
 
 const p = (t, s, e, f = 'S1') => ({ t, s, e, f })
 
@@ -74,7 +80,7 @@ test('estados liga o card do gancho só no começo', () => {
 
 test('listaDoConcat repete o último arquivo', () => {
   const texto = listaDoConcat([{ quadros: 15 }, { quadros: 30 }], ['/a.png', '/b.png'], 30)
-  assert.equal(texto, "file '/a.png'\nduration 0.500000\nfile '/b.png'\nduration 1.000000\nfile '/b.png'\n")
+  assert.equal(texto, "file '/a.png'\noption framerate 30\nduration 0.500000\nfile '/b.png'\noption framerate 30\nduration 1.000000\nfile '/b.png'\noption framerate 30\n")
 })
 
 test('trechosDasFrases acha a frase sem ligar para caixa, acento e pontuação', () => {
@@ -100,4 +106,33 @@ test('listaDoConcat troca a contrabarra do caminho do Windows pela barra', () =>
 test('trechosDasFrases acha o destaque dentro da palavra que a correção juntou', () => {
   const r = trechosDasFrases([p('cobra', 0, 0.3), p('R$ 300', 0.3, 1.0), p('por', 1.0, 1.2)], ['R$ 300'])
   assert.deepEqual(r.map((x) => [x.i0, x.i1]), [[1, 1]])
+})
+
+test('listaDoConcat abre cada PNG na cadência da entrega', () => {
+  const lista = listaDoConcat([{ quadros: 2 }, { quadros: 1 }], ['a.png', 'b.png'], 25)
+  assert.equal(lista.split('\n').filter((l) => l === 'option framerate 25').length, 3)
+})
+
+const ffmpeg = acharPrograma('ffmpeg')
+
+test('o overlay da legenda segura cada estado pelo número de quadros pedido', { skip: !ffmpeg && 'sem o ffmpeg nesta máquina' }, () => {
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'overlay-'))
+  const cores = ['red', 'lime', 'blue', 'yellow', 'white', 'magenta', 'orange', 'cyan']
+  const quadros = [1, 2, 1, 3, 1, 1, 5, 2]
+  const arquivos = cores.map((c, k) => {
+    const a = path.join(pasta, `e${k}.png`)
+    spawnSync(ffmpeg, ['-y', '-loglevel', 'error', '-f', 'lavfi', '-i', `color=c=${c}:s=32x32`, '-frames:v', '1', a])
+    return a
+  })
+  fs.writeFileSync(path.join(pasta, 'lista.txt'), listaDoConcat(quadros.map((q) => ({ quadros: q })), arquivos, 30))
+  spawnSync(ffmpeg, argsOverlay(path.join(pasta, 'lista.txt'), 30, path.join(pasta, 'ov.mov')))
+  const saida = spawnSync(ffmpeg, ['-hide_banner', '-i', path.join(pasta, 'ov.mov'), '-vf', 'scale=1:1,format=rgb24', '-f', 'rawvideo', '-'], { maxBuffer: 1 << 20 }).stdout
+  const corridas = []
+  for (let i = 0; i < saida.length; i += 3) {
+    const cor = saida.subarray(i, i + 3).toString('hex')
+    const u = corridas[corridas.length - 1]
+    if (u && u.cor === cor) u.n++
+    else corridas.push({ cor, n: 1 })
+  }
+  assert.deepEqual(corridas.slice(0, -1).map((c) => c.n), quadros.slice(0, -1))
 })

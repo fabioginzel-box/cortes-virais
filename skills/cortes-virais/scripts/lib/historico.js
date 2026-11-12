@@ -10,9 +10,12 @@ const { mediana } = require('./numeros')
 const METRICAS = ['visualizacoes', 'retencao', 'continuaram', 'curtidas', 'inscritos']
 
 // O YouTube Studio em português mostra "12.000" e "74,5": o ponto de milhar sai e a vírgula vira ponto.
+// Porcentagem não tem milhar: nela, "74.125" é decimal.
+const PORCENTAGENS = ['retencao', 'continuaram']
 function lerNumero (valor, nome) {
   const texto = String(valor).trim().replace(/%$/, '').replace(/\s/g, '')
-  const normal = texto.includes(',') ? texto.replace(/\./g, '').replace(',', '.') : /^\d{1,3}(\.\d{3})+$/.test(texto) ? texto.replace(/\./g, '') : texto
+  const milhar = !PORCENTAGENS.includes(nome) && /^\d{1,3}(\.\d{3})+$/.test(texto)
+  const normal = texto.includes(',') ? texto.replace(/\./g, '').replace(',', '.') : milhar ? texto.replace(/\./g, '') : texto
   const n = Number(normal)
   if (normal === '' || !Number.isFinite(n)) throw new Error(`--${nome} "${valor}" não é um número`)
   return n
@@ -84,8 +87,10 @@ function postos (xs) {
   return p
 }
 
+const comNotaERetencao = (linhas) => linhas.filter((l) => Number.isFinite(l.nota) && Number.isFinite(l.metricas.retencao))
+
 function acertoDaNota (linhas) {
-  const pares = linhas.filter((l) => Number.isFinite(l.nota) && Number.isFinite(l.metricas.retencao))
+  const pares = comNotaERetencao(linhas)
   if (pares.length < 5) return null
   const a = postos(pares.map((l) => l.nota))
   const b = postos(pares.map((l) => l.metricas.retencao))
@@ -100,11 +105,16 @@ function acertoDaNota (linhas) {
 }
 
 function resumo (linhas) {
+  const acerto = acertoDaNota(linhas)
+  const semAcerto = comNotaERetencao(linhas).length < 5
+    ? 'precisa de 5 cortes ou mais com nota e retenção'
+    : 'as notas ou a retenção não variam entre os cortes, e não dá para medir'
   return {
     cortes: linhas.length,
     porGancho: agrupar(linhas, (l) => l.tipo_gancho),
     porDuracao: agrupar(linhas, (l) => faixaDeDuracao(l.duracao)),
-    acertoDaNota: acertoDaNota(linhas)
+    acertoDaNota: acerto,
+    semAcerto: acerto == null ? semAcerto : null
   }
 }
 

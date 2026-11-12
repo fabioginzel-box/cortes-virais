@@ -43,3 +43,13 @@ test('textoParaModelo escreve uma linha por momento', () => {
   const t = textoParaModelo([{ inicio: 65, fim: 90, intensidade: 8, sinais: ['riso'], o_que_acontece: 'Ri da conta.', frase_chave: 'Caro?' }])
   assert.equal(t, '[0:01:05.0–0:01:30.0] 8/10 riso — Ri da conta. "Caro?"')
 })
+
+test('momentosDaParte aceita os sinais escritos como texto', () => {
+  const r = momentosDaParte(resposta([{ inicio: '00:10', fim: '00:40', sinais: 'riso', intensidade: 7 }]), { inicio: 0, fim: 1200 })
+  assert.deepEqual(r.momentos.map((m) => m.sinais), [['riso']])
+})
+
+test('momentosDaParte descarta o momento que começa depois do fim da parte', () => {
+  const r = momentosDaParte(resposta([{ inicio: '21:00', fim: '21:30', sinais: ['riso'], intensidade: 7 }]), { inicio: 0, fim: 1200 })
+  assert.deepEqual(r.momentos, [])
+})

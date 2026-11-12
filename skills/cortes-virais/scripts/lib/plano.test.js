@@ -236,3 +236,121 @@ test('conferirCortes não deixa o fim do corte passar do fim do vídeo', () => {
   const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 30, fim: duracaoFonte }] })] }, lista, { duracaoFonte })
   assert.ok(r.cortes[0].trechos[0].fim <= duracaoFonte - 0.05)
 })
+
+const seguidas = (de, ate, passo = 0.4) => {
+  const lista = []
+  for (let s = de; s + 0.3 <= ate + 1e-9; s += passo) lista.push(p('palavra', Number(s.toFixed(3)), Number((s + 0.3).toFixed(3))))
+  lista[lista.length - 1].t = 'fim.'
+  return lista
+}
+
+test('pontoDeFim não estende o corte por uma música depois da última palavra', () => {
+  n = 0
+  const lista = [...seguidas(10, 40), p('(music)', 40.2, 75, null, { ev: true }), ...seguidas(76, 90)]
+  assert.ok(pontoDeFim(40, lista).corte < 41)
+})
+
+test('pontoDeFim estende pelo riso no máximo 3 s', () => {
+  n = 0
+  const lista = [...seguidas(10, 40), p('(laughter)', 40.0, 46, null, { ev: true }), ...seguidas(48, 60)]
+  const fim = lista.find((x) => x.t === 'fim.').e
+  assert.ok(pontoDeFim(fim, lista).corte <= fim + 3.25)
+})
+
+test('pontoDeFim ainda inclui o riso curto logo depois da frase', () => {
+  n = 0
+  const lista = [...seguidas(10, 40), p('(laughter)', 40.0, 41.2, null, { ev: true }), ...seguidas(43, 50)]
+  const fim = lista.find((x) => x.t === 'fim.').e
+  assert.ok(pontoDeFim(fim, lista).corte >= 41.2)
+})
+
+test('pontoDeFim estende pelo aplauso logo depois da frase', () => {
+  n = 0
+  const lista = [...seguidas(10, 40), p('(applause)', 40.0, 41.2, null, { ev: true }), ...seguidas(43, 50)]
+  const fim = lista.find((x) => x.t === 'fim.').e
+  assert.ok(pontoDeFim(fim, lista).corte >= 41.2)
+})
+
+test('mantidos não corta o riso entre a última palavra e o vício da borda', () => {
+  n = 0
+  const lista = [p('Olha', 0.1, 0.4), p('isso.', 0.5, 0.9), p('(laughter)', 0.9, 2.1, null, { ev: true }), p('ah', 2.1, 2.3)]
+  const m = mantidos(0, 2.5, lista, 'dinamico')
+  assert.ok(m[m.length - 1][1] >= 2.1)
+})
+
+test('mantidos não corta o riso entre o vício da borda e a primeira palavra', () => {
+  n = 0
+  const lista = [p('hum', 0.0, 0.3), p('(laughter)', 0.3, 1.5, null, { ev: true }), p('Então', 1.6, 1.9), p('foi.', 2.0, 2.3)]
+  const m = mantidos(0, 2.5, lista, 'dinamico')
+  assert.ok(m[0][0] <= 0.3)
+})
+
+const juntaNaPausa = () => {
+  n = 0
+  return [p('A', 8, 8.2), p('ác', 8.3, 8.6), p('mi', 9.3, 9.5), p('tech', 9.6, 9.7), p('lab.', 9.8, 10)]
+}
+const CORRECAO = [{ de: 'ac mi tech lab', para: 'AcmeTechLab' }]
+
+test('palavrasEditadas aplica a correção que atravessa uma pausa cortada', () => {
+  const editadas = palavrasEditadas(juntaNaPausa(), [[7.9, 8.75], [9.15, 10.1]], { correcoes: CORRECAO })
+  assert.deepEqual(editadas.map((x) => x.t), ['A', 'AcmeTechLab.'])
+})
+
+test('textoDoCorte mostra a correção que atravessa uma pausa cortada', () => {
+  const t = textoDoCorte(juntaNaPausa(), { mantidos: [[7.9, 8.75], [9.15, 10.1]] }, CORRECAO)
+  assert.equal(t, 'A AcmeTechLab.')
+})
+
+test('conferirCortes aponta o id repetido', () => {
+  const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 0, fim: 30 }] }), candidato({ titulo: 'Outro', trechos: [{ inicio: 31, fim: 59 }] })] }, longas())
+  assert.match(r.problemas.map((x) => x.problemas.join()).join(), /id 1 repetido/)
+})
+
+test('conferirCortes não deixa o trecho tocar de novo o começo do seguinte', () => {
+  const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 0, fim: 13.5 }, { inicio: 14, fim: 30 }] })] }, longas())
+  const [a, b] = r.cortes[0].trechos
+  assert.ok(a.fim <= b.inicio)
+})
+
+test('conferirCortes deixa a abertura no ponto alto repetir o trecho de propósito', () => {
+  const r = conferirCortes({ cortes: [candidato({ trechos: [{ inicio: 20, fim: 24 }, { inicio: 4, fim: 30 }] })] }, longas())
+  const [a, b] = r.cortes[0].trechos
+  assert.ok(b.inicio < a.fim)
+})
+
+test('pontoDeInicio mantém o tempo pedido no meio de um silêncio longo', () => {
+  n = 0
+  const lista = [...seguidas(260, 290), ...seguidas(330, 360)]
+  assert.equal(pontoDeInicio(300, lista).corte, 300)
+})
+
+test('pontoDeFim mantém o tempo pedido no meio de um silêncio longo', () => {
+  n = 0
+  const lista = [...seguidas(260, 290), ...seguidas(330, 360)]
+  assert.equal(pontoDeFim(320, lista).corte, 320)
+})
+
+test('pontoDeInicio depois da última palavra não volta ao começo do vídeo', () => {
+  n = 0
+  assert.equal(pontoDeInicio(300, seguidas(10, 290)).corte, 300)
+})
+
+test('conferirCortes usa a limpeza pedida no candidato', () => {
+  const r = conferirCortes({ cortes: [candidato({ limpeza: 'sem', trechos: [{ inicio: 4, fim: 35 }] })] }, longas())
+  assert.deepEqual([r.cortes[0].limpeza, r.cortes[0].mantidos.length], ['sem', 1])
+})
+
+test('conferirCortes aponta a limpeza que não existe', () => {
+  const r = conferirCortes({ cortes: [candidato({ limpeza: 'forte', trechos: [{ inicio: 4, fim: 35 }] })] }, longas())
+  assert.match(r.problemas[0].problemas.join(), /limpeza/)
+})
+
+test('conferirCortes avisa quando passa de 3 hashtags', () => {
+  const r = conferirCortes({ cortes: [candidato({ hashtags: ['#a', '#b', '#c', '#d'], trechos: [{ inicio: 4, fim: 35 }] })] }, longas())
+  assert.match(r.cortes[0].avisos.join(), /mais de 3 hashtags/)
+})
+
+test('conferirCortes não avisa com 3 hashtags', () => {
+  const r = conferirCortes({ cortes: [candidato({ hashtags: ['#a', '#b', '#c'], trechos: [{ inicio: 4, fim: 35 }] })] }, longas())
+  assert.doesNotMatch(r.cortes[0].avisos.join(), /hashtags/)
+})
