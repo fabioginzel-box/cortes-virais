@@ -30,9 +30,9 @@ O melhor modelo de fluxo com o Claude escolhendo os cortes.
 
 - **Copiado:** a lista de critérios de viralização (gancho, pico de emoção, opinião forte, revelação,
   conflito, frase de efeito, história, valor prático); o candidato com a frase do gancho e o motivo;
-  dividir o vídeo longo em partes de 20 min com 1 min de sobra entre elas, para o momento na fronteira
-  não se perder; descartar o candidato que repete mais da metade de outro com nota maior; não encher a
-  lista com corte fraco.
+  dividir o vídeo longo em partes de 20 min (hoje de 10 min, pelo tamanho do data URL: ADR 0006) com
+  1 min de sobra entre elas, para o momento na fronteira não se perder; descartar o candidato que
+  repete mais da metade de outro com nota maior; não encher a lista com corte fraco.
 - **Diferente:** o enquadramento dele usa o detector Haar e grava em `mp4v`, sem legenda; e a divisão
   em partes tem um erro de deslocamento de tempo que faz sumir os candidatos depois da primeira parte.
 

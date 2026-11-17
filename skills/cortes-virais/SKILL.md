@@ -61,14 +61,20 @@ quantos falantes e que sons achou (risos, aplausos). Uma hora de áudio leva uns
 
 ## 3. O Gemini assiste
 
-`node scripts/cortes.js assistir <pasta>`. O Gemini vê o vídeo em partes de 20 min, ao mesmo tempo, e
+`node scripts/cortes.js assistir <pasta>`. O Gemini vê o vídeo em partes de 10 min, ao mesmo tempo, e
 grava em `momentos.txt` o que só se vê ou se ouve: riso, reação, energia, gesto, prova na tela. Ele dá
 também a visão geral (quantas pessoas, formato, tema). Com a `GEMINI_API_KEY`, ele assiste pela Gemini
 API do Google; sem ela, pelo Replicate.
 
+Pelo Replicate, cada parte vai dentro da própria predição, como data URL: a cópia leve tem uns 8 MB, e
+o data URL, uns 11 MB. Desde 17/11/2026 é o caminho que funciona: pela URL do Files API o Gemini do
+Replicate responde 500. Como cada consulta de andamento traz o vídeo de volta, ela sai a cada 10 s; num
+vídeo de uma hora isso baixa algumas centenas de MB.
+
 Se ele falhar, siga sem ele: a escolha sai da transcrição, com os risos que o Scribe marcou, e diga
-isso a quem pediu. O Gemini do Replicate já recusou toda mídia com o erro genérico E001; vale tentar
-de novo outro dia ou usar a Gemini API ([references/setup.md](references/setup.md#a-gemini-api-opcional)).
+isso a quem pediu. No primeiro teste (10/11/2026) o Gemini do Replicate recusou toda mídia, com o erro
+genérico E001; se isso voltar, tente de novo outro dia ou use a Gemini API
+([references/setup.md](references/setup.md#a-gemini-api-opcional)).
 
 ## 4. Os candidatos
 

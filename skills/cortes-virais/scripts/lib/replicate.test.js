@@ -26,6 +26,14 @@ function falso (respostas) {
   return { buscar, chamadas }
 }
 
+async function semEspera (t, fazer) {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  let pronto = false
+  const feito = fazer().finally(() => { pronto = true })
+  for (let i = 0; i < 100 && !pronto; i++) { t.mock.timers.tick(60000); await new Promise(setImmediate) }
+  return feito
+}
+
 test('token usa a variável de ambiente antes do Keychain', () => {
   assert.equal(token({ REPLICATE_API_TOKEN: 'r8_x' }, () => { throw new Error('não devia chamar') }), 'r8_x')
 })
@@ -104,4 +112,60 @@ test('dataUrl leva o arquivo inteiro dentro da URL, com o tipo', (t) => {
   const arquivo = path.join(pasta, 'v.mp4')
   fs.writeFileSync(arquivo, Buffer.from('abc'))
   assert.equal(dataUrl(arquivo, 'video/mp4'), 'data:video/mp4;base64,YWJj')
+})
+
+test('a resposta com caractere de controle cru numa string ainda é lida', async () => {
+  const quebrada = { status: 200, ok: true, headers: { get: () => null }, text: async () => '{"id":"p1","status":"succeeded","output":"linha\u0001com\tcontrole"}' }
+  const { buscar } = falso([resposta(201, { id: 'p1', status: 'starting' }), quebrada])
+  const c = criarCliente({ chave: 'k', buscar, pausa: 0 })
+  const p = await c.rodar('google/gemini-3.1-pro', {})
+  assert.equal(p.output, 'linha com controle')
+})
+
+test('a consulta de andamento que chega cortada é repetida', async (t) => {
+  const cortada = { status: 200, ok: true, headers: { get: () => null }, text: async () => '{"id":"p1","status":"proc' }
+  const { buscar, chamadas } = falso([resposta(201, { id: 'p1', status: 'starting' }), cortada, resposta(200, { id: 'p1', status: 'succeeded', output: 'ok' })])
+  const c = criarCliente({ chave: 'k', buscar, pausa: 0 })
+  const p = await semEspera(t, () => c.rodar('google/gemini-3.1-pro', {}))
+  assert.equal(p.output, 'ok')
+  assert.equal(chamadas.length, 3)
+})
+
+test('a consulta de andamento que cai no meio da leitura é repetida', async (t) => {
+  const caiu = { status: 200, ok: true, headers: { get: () => null }, text: async () => { throw new TypeError('terminated') } }
+  const { buscar, chamadas } = falso([resposta(201, { id: 'p1', status: 'starting' }), caiu, resposta(200, { id: 'p1', status: 'succeeded', output: 'ok' })])
+  const c = criarCliente({ chave: 'k', buscar, pausa: 0 })
+  const p = await semEspera(t, () => c.rodar('google/gemini-3.1-pro', {}))
+  assert.equal(p.output, 'ok')
+  assert.equal(chamadas.length, 3)
+})
+
+test('a criação com resposta ilegível não é repetida, para não cobrar duas predições', async () => {
+  const cortada = { status: 201, ok: true, headers: { get: () => null }, text: async () => '{"id":"p1","sta' }
+  const { buscar, chamadas } = falso([cortada])
+  const c = criarCliente({ chave: 'k', buscar, pausa: 0 })
+  await assert.rejects(c.criar('google/gemini-3.1-pro', {}), /resposta do Replicate ilegível/)
+  assert.equal(chamadas.length, 1)
+})
+
+test('a consulta de andamento espera a pausa pedida ao cliente', async (t) => {
+  t.mock.timers.enable({ apis: ['setTimeout'] })
+  const { buscar, chamadas } = falso([resposta(201, { id: 'p1', status: 'starting' }), resposta(200, { id: 'p1', status: 'succeeded' })])
+  const c = criarCliente({ chave: 'k', buscar, pausa: 10000 })
+  const feito = c.rodar('google/gemini-3.1-pro', {})
+  const andar = async (ms) => { t.mock.timers.tick(ms); for (let i = 0; i < 5; i++) await new Promise(setImmediate) }
+  await andar(0)
+  await andar(9999)
+  assert.equal(chamadas.length, 1)
+  await andar(1)
+  await feito
+  assert.equal(chamadas.length, 2)
+})
+
+test('a criação que perde a conexão não é repetida e diz o que fazia', async () => {
+  let chamadas = 0
+  const buscar = async () => { chamadas++; throw new TypeError('fetch failed') }
+  const c = criarCliente({ chave: 'k', buscar, pausa: 0 })
+  await assert.rejects(c.criar('google/gemini-3.1-pro', {}), /criar a predição de google\/gemini-3\.1-pro: a conexão com o Replicate caiu \(fetch failed\)/)
+  assert.equal(chamadas, 1)
 })

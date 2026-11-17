@@ -113,9 +113,12 @@ function programas () {
   return { ffmpeg, ffprobe, versao: lerVersao(rodar(ffmpeg, ['-version'], { saida: true }).split('\n')[0]) }
 }
 
-function cliente (pasta) {
+// A consulta de andamento devolve a predição inteira, com o vídeo do data URL dentro.
+const PAUSA_COM_VIDEO = 10000
+
+function cliente (pasta, pausa) {
   const { criarCliente } = require('./lib/replicate')
-  return criarCliente({ registro: path.join(pasta, 'replicate.jsonl') })
+  return criarCliente({ registro: path.join(pasta, 'replicate.jsonl'), pausa })
 }
 
 function ambiente () {
@@ -321,7 +324,7 @@ async function assistir (pasta) {
   const { ffmpeg } = programas()
   const google = require('./lib/gemini-google')
   const direto = google.chave() ? google.criarClienteGoogle({ registro: path.join(pasta, 'gemini-api.jsonl') }) : null
-  const rep = direto ? null : cliente(pasta)
+  const rep = direto ? null : cliente(pasta, PAUSA_COM_VIDEO)
   const lista = partes(f.duracao)
   console.log(`o ${direto ? google.modelo() : gemini.MODELO} vai assistir ${lista.length} ${lista.length > 1 ? 'partes' : 'parte'}, ${direto ? 'pela Gemini API' : 'pelo Replicate'}…`)
   const tentativas = await Promise.allSettled(lista.map(async (parte, i) => {
@@ -330,7 +333,7 @@ async function assistir (pasta) {
     rodar(ffmpeg, argsCopiaLeve(f.arquivo, parte.inicio, parte.fim, copia))
     const resposta = direto
       ? await direto.assistir(copia, gemini.prompt(parte, f.duracao, i, lista.length))
-      : [].concat((await rep.rodar(gemini.MODELO, gemini.entrada(await rep.enviar(copia, 'video/mp4'), parte, f.duracao, i, lista.length))).output).join('')
+      : [].concat(await gemini.assistirParte(rep, copia, parte, f.duracao, i, lista.length)).join('')
     fs.writeFileSync(path.join(pasta, 'gemini', `parte-${i + 1}.txt`), resposta)
     return gemini.momentosDaParte(resposta, parte)
   }))
@@ -500,7 +503,7 @@ async function renderizar (pasta, c, video, { previa, realce, destino, comFinali
   if (comRealce) {
     const entradaDoRealce = gerar(path.join(trabalho, `para-realce-${path.basename(recorte, '.mov')}.mp4`), (tmp) => rodar(ffmpeg, render.argsParaRealce(recorte, tmp)))
     imagem = await gerar(path.join(trabalho, `realce-${path.basename(recorte, '.mov')}.mp4`), async (tmp) => {
-      const rep = cliente(pasta)
+      const rep = cliente(pasta, PAUSA_COM_VIDEO)
       console.log(`  realce no ${MODELO_DO_REALCE}, a partir de ${tela.largura}×${tela.altura} (${(fs.statSync(entradaDoRealce).size / 1048576).toFixed(0)} MB)…`)
       const p = await rep.rodar(MODELO_DO_REALCE, { video: dataUrl(entradaDoRealce, 'video/mp4'), target_resolution: '4k', target_fps: fps })
       await rep.baixar(p.output, tmp)

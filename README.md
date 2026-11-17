@@ -18,7 +18,7 @@ identidade visual do seu canal.
 
 1. **Transcreve** o vídeo com o tempo de cada palavra e quem fala (`elevenlabs/scribe-v2`, no
    Replicate), com os risos e aplausos marcados.
-2. **Assiste** ao vídeo com o Gemini, em partes de 20 min, e anota o que só se vê ou se ouve: reação,
+2. **Assiste** ao vídeo com o Gemini, em partes de 10 min, e anota o que só se vê ou se ouve: reação,
    riso, energia, gesto, prova na tela.
 3. **Escolhe os momentos**: o Claude lê a transcrição inteira e as anotações do Gemini e propõe de 10 a
    15 cortes, com nota por uma régua de gancho, sentido sozinho, emoção, valor e desfecho, e com o
@@ -174,7 +174,8 @@ US$ 0,08 por segundo de vídeo em novembro de 2026) e só roda quando você pede
   limpeza errar.
 - No Linux, os testes automáticos rodam a cada mudança, mas um vídeo de ponta a ponta ainda não foi
   feito lá.
-- O Gemini do Replicate já recusou toda mídia com o erro E001. Quando isso acontece, a skill segue só
+- O Gemini do Replicate já recusou toda mídia com o erro E001 (10/11/2026), e pela URL do Files API
+  ele responde 500; desde 17/11/2026 ele lê o vídeo como data URL. Quando ele falha, a skill segue só
   com a transcrição; a Gemini API é a alternativa.
 - O enquadramento acha rosto de frente, de lado e a meia distância; rosto muito pequeno ou de costas
   cai no layout de tela inteira.

@@ -2,7 +2,10 @@
 
 const { test } = require('node:test')
 const assert = require('node:assert/strict')
-const { prompt, momentosDaParte, juntar, textoParaModelo } = require('./gemini')
+const fs = require('node:fs')
+const os = require('node:os')
+const path = require('node:path')
+const { MODELO, prompt, assistirParte, momentosDaParte, juntar, textoParaModelo } = require('./gemini')
 
 const resposta = (momentos, extra = {}) => ['```json\n', JSON.stringify({ momentos, ...extra }), '\n```']
 
@@ -52,4 +55,17 @@ test('momentosDaParte aceita os sinais escritos como texto', () => {
 test('momentosDaParte descarta o momento que começa depois do fim da parte', () => {
   const r = momentosDaParte(resposta([{ inicio: '21:00', fim: '21:30', sinais: ['riso'], intensidade: 7 }]), { inicio: 0, fim: 1200 })
   assert.deepEqual(r.momentos, [])
+})
+
+test('assistirParte manda a parte ao Gemini como data URL, sem subir pelo Files API', async (t) => {
+  const pasta = fs.mkdtempSync(path.join(os.tmpdir(), 'cortes-teste-'))
+  t.after(() => fs.rmSync(pasta, { recursive: true, force: true }))
+  const arquivo = path.join(pasta, 'parte-1.mp4')
+  fs.writeFileSync(arquivo, Buffer.from('abc'))
+  const pedidos = []
+  const rep = { rodar: async (modelo, input) => { pedidos.push({ modelo, input }); return { output: ['{"momentos": []}'] } } }
+  const saida = await assistirParte(rep, arquivo, { inicio: 0, fim: 600 }, 1500, 0, 3)
+  assert.deepEqual(saida, ['{"momentos": []}'])
+  assert.equal(pedidos[0].modelo, MODELO)
+  assert.deepEqual(pedidos[0].input.videos, ['data:video/mp4;base64,YWJj'])
 })

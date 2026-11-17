@@ -1,7 +1,7 @@
 'use strict'
 
-// Caminho opcional ao Replicate, cujo Gemini recusou toda mídia (E001): com a GEMINI_API_KEY, o vídeo
-// vai direto à Gemini API do Google AI Studio.
+// Caminho opcional ao Gemini do Replicate: com a GEMINI_API_KEY, o vídeo vai direto à Gemini API do
+// Google AI Studio.
 
 const fs = require('node:fs')
 const https = require('node:https')
@@ -18,8 +18,8 @@ const FINS_NORMAIS = new Set([undefined, 'STOP', 'FINISH_REASON_UNSPECIFIED'])
 
 const duracao = (ms) => (ms >= 60000 ? `${Math.round(ms / 60000)} min` : `${ms / 1000} s`)
 
-// O fetch do Node desiste se o cabeçalho não chega em 300 s, e o raciocínio alto sobre 20 min de
-// vídeo pode demorar mais: o generateContent vai pelo https, só com o prazo total.
+// O fetch do Node desiste se o cabeçalho não chega em 300 s, e o raciocínio alto sobre uma parte
+// do vídeo pode demorar mais: o generateContent vai pelo https, só com o prazo total.
 function criarBuscarLongo ({ prazo = PRAZO_DA_RESPOSTA, pedir = https.request } = {}) {
   return (url, { method = 'GET', headers = {}, body } = {}) => new Promise((resolve, reject) => {
     let req = null

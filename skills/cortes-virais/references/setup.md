@@ -92,7 +92,8 @@ segundo de vídeo em novembro de 2026), e por isso é opcional.
 ## A Gemini API (opcional)
 
 Com a variável `GEMINI_API_KEY`, o passo `assistir` fala direto com a Gemini API do Google, em vez do
-Gemini do Replicate, que já recusou toda mídia com o erro E001. O modelo padrão é o
+Gemini do Replicate. É o plano B para quando o Replicate falha: em 10/11/2026 o Gemini de lá recusou
+toda mídia com o erro E001, e só desde 17/11/2026 lê o vídeo, como data URL. O modelo padrão é o
 `gemini-3.1-pro-preview`; outro vai em `CORTES_VIRAIS_GEMINI_MODELO`.
 
 1. Crie a chave em aistudio.google.com/apikey.

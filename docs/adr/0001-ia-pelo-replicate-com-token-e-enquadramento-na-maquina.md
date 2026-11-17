@@ -38,7 +38,8 @@ accepted
   (Keychain no Mac, variável do usuário no Windows, `secret-tool` ou `~/.profile` no Linux).
 - O Gemini 3.1 Pro não tem nível gratuito na Gemini API; um modelo mais barato serve pela variável
   `CORTES_VIRAIS_GEMINI_MODELO`.
-- O Claude não recebe vídeo nem áudio. Por isso o Gemini assiste ao vídeo em partes de 20 min, com
+- O Claude não recebe vídeo nem áudio. Por isso o Gemini assiste ao vídeo em partes de 20 min (10 min desde a 1.0.2, na
+  [ADR 0006](0006-o-video-vai-ao-gemini-do-replicate-por-data-url.md)), com
   1 min de sobra entre elas, e aponta riso, reação e o que aparece na tela; o Claude cruza isso com a
   transcrição.
 - O detector de rosto padrão do FaceLandmarker não acha rosto de lado e a meia distância, o plano de

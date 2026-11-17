@@ -37,12 +37,12 @@ test('fpsDeEntrega arredonda 59,94 para 60', () => {
   assert.equal(fpsDeEntrega(59.94), 60)
 })
 
-test('partes não divide o vídeo curto', () => {
-  assert.deepEqual(partes(900), [{ inicio: 0, fim: 900 }])
+test('partes não divide o vídeo de até 11 min', () => {
+  assert.deepEqual(partes(660), [{ inicio: 0, fim: 660 }])
 })
 
-test('partes divide o vídeo longo com um minuto de sobra entre as partes', () => {
-  assert.deepEqual(partes(3000), [{ inicio: 0, fim: 1200 }, { inicio: 1140, fim: 2340 }, { inicio: 2280, fim: 3000 }])
+test('partes divide o vídeo longo em partes de 10 min com um minuto de sobra entre elas', () => {
+  assert.deepEqual(partes(1500), [{ inicio: 0, fim: 600 }, { inicio: 540, fim: 1140 }, { inicio: 1080, fim: 1500 }])
 })
 
 test('argsQuadros tira os quadros do trecho na frequência pedida', () => {

@@ -97,9 +97,9 @@ function argsProbe (arquivo) {
   return ['-v', 'error', '-show_streams', '-show_format', '-of', 'json', arquivo]
 }
 
-// Partes do vídeo para o Gemini: até 20 min cada, com 1 min de sobra entre elas, para um momento na
-// fronteira não se perder.
-function partes (duracao, tamanho = 1200, sobra = 60) {
+// Partes do vídeo para o Gemini: até 10 min cada, para a cópia leve não passar de uns 8 MB (11 MB no
+// data URL), com 1 min de sobra entre elas, para um momento na fronteira não se perder.
+function partes (duracao, tamanho = 600, sobra = 60) {
   if (duracao <= tamanho + sobra) return [{ inicio: 0, fim: duracao }]
   const lista = []
   for (let inicio = 0; inicio < duracao; inicio += tamanho - sobra) {

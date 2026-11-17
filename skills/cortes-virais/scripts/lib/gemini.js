@@ -3,6 +3,7 @@
 // O Claude não recebe vídeo: o Gemini assiste e aponta o que a transcrição não mostra.
 
 const { lerTempo, formatarTempo } = require('./transcricao')
+const { dataUrl } = require('./replicate')
 
 const MODELO = 'google/gemini-3.1-pro'
 const SINAIS = ['riso', 'reacao', 'energia', 'gesto', 'conflito', 'prova_visual', 'frase_de_efeito', 'historia', 'humor', 'virada']
@@ -24,13 +25,18 @@ function prompt (parte, total, indice, quantas) {
     '- "frase_chave": a fala mais forte do momento, como foi dita.',
     'Diga também, em "visao_geral", quantas pessoas aparecem ("pessoas"), o formato ("tipo": podcast, entrevista, palestra, tela, vlog ou outro) e o tema em poucas palavras ("tema").',
     '',
-    'Até 15 momentos, do mais forte ao mais fraco. Responda só com JSON, sem texto em volta:',
+    'Até 8 momentos, do mais forte ao mais fraco. Responda só com JSON, sem texto em volta:',
     '{"visao_geral": {"pessoas": 2, "tipo": "podcast", "tema": "..."}, "momentos": [{"inicio": "03:12", "fim": "03:55", "sinais": ["riso"], "intensidade": 8, "o_que_acontece": "...", "frase_chave": "..."}]}'
   ].filter((l) => l !== '').join('\n')
 }
 
-function entrada (url, parte, total, indice, quantas) {
-  return { prompt: prompt(parte, total, indice, quantas), videos: [url], video_fps: 2, thinking_level: 'high', max_output_tokens: 16384, temperature: 0.4 }
+function entrada (video, parte, total, indice, quantas) {
+  return { prompt: prompt(parte, total, indice, quantas), videos: [video], video_fps: 2, thinking_level: 'high', max_output_tokens: 16384, temperature: 0.4 }
+}
+
+async function assistirParte (rep, arquivo, parte, total, indice, quantas) {
+  const p = await rep.rodar(MODELO, entrada(dataUrl(arquivo, 'video/mp4'), parte, total, indice, quantas))
+  return p.output
 }
 
 function lerJson (texto) {
@@ -78,4 +84,4 @@ function textoParaModelo (momentos) {
   return momentos.map((m) => `[${formatarTempo(m.inicio)}–${formatarTempo(m.fim)}] ${m.intensidade}/10 ${m.sinais.join(',')} — ${m.o_que_acontece}${m.frase_chave ? ` "${m.frase_chave}"` : ''}`).join('\n')
 }
 
-module.exports = { MODELO, prompt, entrada, momentosDaParte, juntar, textoParaModelo }
+module.exports = { MODELO, prompt, entrada, assistirParte, momentosDaParte, juntar, textoParaModelo }

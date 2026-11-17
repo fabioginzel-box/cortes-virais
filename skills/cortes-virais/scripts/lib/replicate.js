@@ -49,6 +49,16 @@ function token (env = process.env, rodar = spawnSync, plataforma = process.platf
 
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms))
 
+// O Gemini às vezes devolve caractere de controle cru dentro de uma string; fora das strings ele só
+// pode ser espaço, então trocá-lo por espaço não muda a estrutura do JSON.
+function lerResposta (texto) {
+  try {
+    return JSON.parse(texto)
+  } catch {
+    return JSON.parse(texto.replace(/[\u0000-\u001F]/g, ' '))
+  }
+}
+
 function erroDaApi (status, corpo, onde) {
   if (status === 401) return new Recusa(`o Replicate recusou o token (401): confira o REPLICATE_API_TOKEN ou o item ${SERVICO} do chaveiro`)
   if (status === 402) return new Recusa('a conta do Replicate está sem crédito (402): compre crédito em replicate.com/account/billing')
@@ -60,16 +70,31 @@ function criarCliente ({ chave = token(), buscar = fetch, registro = null, pausa
 
   async function chamar (metodo, url, corpo, onde) {
     for (let k = 0; ; k++) {
-      const r = await buscar(url, {
-        method: metodo,
-        headers: corpo instanceof FormData ? cabecalho : { ...cabecalho, 'Content-Type': 'application/json' },
-        body: corpo == null ? undefined : corpo instanceof FormData ? corpo : JSON.stringify(corpo)
-      })
-      const texto = await r.text()
+      // A consulta de andamento traz o vídeo do data URL de volta e às vezes cai no meio: repeti-la não
+      // tem efeito colateral. A criação lida pela metade pode já ter criado a predição.
+      const repetir = metodo === 'GET' && k < TENTATIVAS
+      let r, texto
+      try {
+        r = await buscar(url, {
+          method: metodo,
+          headers: corpo instanceof FormData ? cabecalho : { ...cabecalho, 'Content-Type': 'application/json' },
+          body: corpo == null ? undefined : corpo instanceof FormData ? corpo : JSON.stringify(corpo)
+        })
+        texto = await r.text()
+      } catch (e) {
+        if (repetir) { await esperar(2000 * (k + 1)); continue }
+        throw new Error(`${onde}: a conexão com o Replicate caiu (${e.message})`)
+      }
       if (r.status === 429 && k < TENTATIVAS) { await esperar(Number(r.headers.get('retry-after') || 5) * 1000); continue }
       if (r.status >= 500 && k < TENTATIVAS) { await esperar(2000 * (k + 1)); continue }
       if (!r.ok) throw erroDaApi(r.status, texto, onde)
-      return texto ? JSON.parse(texto) : null
+      if (!texto) return null
+      try {
+        return lerResposta(texto)
+      } catch (e) {
+        if (repetir) { await esperar(2000 * (k + 1)); continue }
+        throw new Error(`${onde}: resposta do Replicate ilegível (${e.message})`)
+      }
     }
   }
 
@@ -129,8 +154,7 @@ function criarCliente ({ chave = token(), buscar = fetch, registro = null, pausa
   return { enviar, criar, aguardar, rodar, baixar }
 }
 
-// Modelo que repassa o arquivo a um serviço de fora (a Topaz) não lê a URL do Files API, que exige o
-// token (401); o data URL vai dentro da própria predição.
+// A Topaz (401) e o Gemini (500) não leem a URL do Files API: o vídeo vai dentro da própria predição.
 const dataUrl = (arquivo, tipo) => `data:${tipo};base64,${fs.readFileSync(arquivo).toString('base64')}`
 
 module.exports = { Recusa, SERVICO, token, comoGuardar, criarCliente, dataUrl }
